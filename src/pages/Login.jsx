@@ -3,18 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../components/BrandLogo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
+import { loginRequest } from '../utils/api.js';
 import { saveSession } from '../utils/session.js';
-
-const demoCredentials = {
-  admin: {
-    email: 'admin@demo.com',
-    password: '123456',
-  },
-  entrepreneur: {
-    email: 'emprendedor@demo.com',
-    password: '123456',
-  },
-};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,25 +14,26 @@ export default function Login() {
     password: '',
   });
   const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
-    const expectedCredentials =
-      activeAccess === 'admin'
-        ? demoCredentials.admin
-        : demoCredentials.entrepreneur;
+  const handleLogin = async () => {
+    setIsSubmitting(true);
 
-    const matchesCredentials =
-      credentials.email.trim().toLowerCase() === expectedCredentials.email &&
-      credentials.password === expectedCredentials.password;
+    try {
+      const session = await loginRequest({
+        correo: credentials.email,
+        password: credentials.password,
+        rol: activeAccess,
+      });
 
-    if (!matchesCredentials) {
-      setLoginError('Credenciales invalidas para el tipo de acceso seleccionado.');
-      return;
+      setLoginError('');
+      saveSession(session);
+      navigate(session.user.rol === 'admin' ? '/panel-admin' : '/panel-emprendedor');
+    } catch (error) {
+      setLoginError(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setLoginError('');
-    saveSession(activeAccess);
-    navigate(activeAccess === 'admin' ? '/panel-admin' : '/panel-emprendedor');
   };
 
   return (
@@ -70,9 +61,9 @@ export default function Login() {
         <aside className="hero-panel">
           <h2>Regla de sesion</h2>
           <p>
-            El administrador accede a usuarios, categorias y metricas. El
-            emprendedor accede a microtienda y metricas. Ambos pueden cerrar
-            sesion y volver a Home.
+            El administrador puede crear usuarios nuevos en la base de datos.
+            El emprendedor accede a su panel privado usando autenticacion real
+            contra el backend.
           </p>
         </aside>
       </section>
@@ -152,7 +143,7 @@ export default function Login() {
               }
             />
             <button type="button" onClick={handleLogin}>
-              Entrar
+              {isSubmitting ? 'Validando...' : 'Entrar'}
             </button>
             {loginError ? <p className="login-error">{loginError}</p> : null}
           </form>
