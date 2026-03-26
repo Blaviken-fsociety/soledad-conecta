@@ -2,12 +2,7 @@ import {
   findAllMicrotiendas,
   findMicrotiendaById,
 } from '../models/microtiendaModel.js';
-
-const buildHttpError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
+import { buildHttpError } from '../utils/httpError.js';
 
 export const getMicrotiendasService = async () => {
   return findAllMicrotiendas();

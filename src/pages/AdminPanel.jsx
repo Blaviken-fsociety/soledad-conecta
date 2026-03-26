@@ -1,22 +1,84 @@
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../components/BrandLogo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
 import { categories } from '../data/marketplaceData.js';
-import { metrics, userRows } from '../data/dashboardData.js';
-import { clearSession, getSessionRole } from '../utils/session.js';
+import { metrics } from '../data/dashboardData.js';
+import { createUserRequest, getUsersRequest } from '../utils/api.js';
+import {
+  clearSession,
+  getSession,
+  getSessionRole,
+  getSessionToken,
+} from '../utils/session.js';
 
 export default function AdminPanel() {
   const navigate = useNavigate();
   const sessionRole = getSessionRole();
+  const session = getSession();
+  const token = getSessionToken();
+  const [users, setUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [formState, setFormState] = useState({
+    nombre: '',
+    correo: '',
+    password: '',
+    rol: 'entrepreneur',
+  });
+  const [formMessage, setFormMessage] = useState('');
+  const [formError, setFormError] = useState('');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setIsLoadingUsers(false);
+      return;
+    }
+
+    const loadUsers = async () => {
+      try {
+        const fetchedUsers = await getUsersRequest(token);
+        setUsers(fetchedUsers);
+      } catch (error) {
+        setFormError(error.message);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, [token]);
 
   if (sessionRole !== 'admin') {
     return <Navigate to="/login" replace />;
   }
 
-  const totalEntrepreneurs = userRows.filter(
-    (user) => user.role === 'Emprendedor / Empresario',
-  ).length;
+  const totalEntrepreneurs = users.filter((user) => user.rol === 'entrepreneur').length;
+
+  const handleCreateUser = async (event) => {
+    event.preventDefault();
+    setIsCreatingUser(true);
+
+    try {
+      const createdUser = await createUserRequest(token, formState);
+
+      setUsers((currentUsers) => [createdUser, ...currentUsers]);
+      setFormMessage('Usuario creado y guardado en MySQL correctamente.');
+      setFormError('');
+      setFormState({
+        nombre: '',
+        correo: '',
+        password: '',
+        rol: 'entrepreneur',
+      });
+    } catch (error) {
+      setFormError(error.message);
+      setFormMessage('');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
 
   return (
     <main className="portal admin-page">
@@ -41,8 +103,8 @@ export default function AdminPanel() {
           <span className="eyebrow">Panel Administrador</span>
           <h1>Gestion institucional del sistema</h1>
           <p className="hero-text">
-            Espacio reservado para administrar usuarios, categorias del sistema
-            y revisar metricas institucionales de la plataforma.
+            Espacio reservado para administrar usuarios reales, categorias del
+            sistema y revisar metricas institucionales de la plataforma.
           </p>
         </div>
 
@@ -50,7 +112,10 @@ export default function AdminPanel() {
           <h2>Acceso seguro</h2>
           <p>
             Solo el administrador autenticado puede acceder a este panel y
-            gestionar la configuracion estructural de la plataforma.
+            registrar nuevos usuarios directamente en la base de datos.
+          </p>
+          <p>
+            Sesion activa: <strong>{session?.user?.nombre}</strong>
           </p>
         </aside>
       </section>
@@ -61,36 +126,109 @@ export default function AdminPanel() {
           <h2>Gestion de usuarios</h2>
         </div>
 
-        <div className="users-toolbar">
-          <button type="button" className="primary-button">
-            Crear emprendedor
-          </button>
-          <button type="button" className="secondary-button">
-            Configuracion general
-          </button>
-        </div>
+        <div className="admin-user-layout">
+          <form className="admin-user-form" onSubmit={handleCreateUser}>
+            <div className="section-heading">
+              <p className="section-kicker">Registro</p>
+              <h3>Crear nuevo usuario</h3>
+              <p>
+                Este formulario inserta usuarios reales en la tabla
+                <strong> usuario </strong>
+                de MySQL.
+              </p>
+            </div>
 
-        <div className="users-table-card">
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Rol</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {userRows.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.id}</td>
-                  <td>{user.name}</td>
-                  <td>{user.role}</td>
-                  <td>{user.status}</td>
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              value={formState.nombre}
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  nombre: event.target.value,
+                }))
+              }
+            />
+            <input
+              type="email"
+              placeholder="Correo del usuario"
+              value={formState.correo}
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  correo: event.target.value,
+                }))
+              }
+            />
+            <input
+              type="password"
+              placeholder="Contrasena temporal"
+              value={formState.password}
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+            />
+            <select
+              value={formState.rol}
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  rol: event.target.value,
+                }))
+              }
+            >
+              <option value="entrepreneur">Emprendedor</option>
+              <option value="admin">Administrador</option>
+            </select>
+
+            <button type="submit" className="primary-button">
+              {isCreatingUser ? 'Guardando...' : 'Crear usuario'}
+            </button>
+
+            {formMessage ? <p className="form-success">{formMessage}</p> : null}
+            {formError ? <p className="login-error">{formError}</p> : null}
+          </form>
+
+          <div className="users-table-card">
+            <div className="table-card-header">
+              <h3>Usuarios registrados</h3>
+            </div>
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Correo</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {isLoadingUsers ? (
+                  <tr>
+                    <td colSpan="5">Cargando usuarios...</td>
+                  </tr>
+                ) : users.length > 0 ? (
+                  users.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.id}</td>
+                      <td>{user.nombre}</td>
+                      <td>{user.correo}</td>
+                      <td>{user.rol === 'admin' ? 'Administrador' : 'Emprendedor'}</td>
+                      <td>{user.estado ? 'Activo' : 'Inactivo'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5">No hay usuarios registrados todavia.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

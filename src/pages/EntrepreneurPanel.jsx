@@ -3,11 +3,12 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
 import { metrics, productRows } from '../data/dashboardData.js';
-import { clearSession, getSessionRole } from '../utils/session.js';
+import { clearSession, getSession, getSessionRole } from '../utils/session.js';
 
 export default function EntrepreneurPanel() {
   const navigate = useNavigate();
   const sessionRole = getSessionRole();
+  const session = getSession();
 
   if (sessionRole !== 'entrepreneur') {
     return <Navigate to="/login" replace />;
@@ -46,6 +47,9 @@ export default function EntrepreneurPanel() {
           <p>
             Desde este panel el emprendedor podra gestionar productos, precios,
             inventario e informacion del negocio.
+          </p>
+          <p>
+            Usuario autenticado: <strong>{session?.user?.nombre}</strong>
           </p>
         </aside>
       </section>

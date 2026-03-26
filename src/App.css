@@ -417,6 +417,40 @@
   gap: 0.75rem;
 }
 
+.admin-user-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.4fr);
+  gap: 1rem;
+}
+
+.admin-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--card-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+.admin-user-form input,
+.admin-user-form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(29, 41, 74, 0.18);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--brand-blue);
+  font: inherit;
+}
+
+.form-success {
+  color: #0f7b45;
+  font-weight: 700;
+}
+
 .users-table-card {
   border: 1px solid var(--border);
   border-radius: 24px;
@@ -795,6 +829,7 @@
   .microstore-grid,
   .metrics-grid,
   .microstore-workspace,
+  .admin-user-layout,
   .business-details,
   .contact-grid,
   .pqrs-layout,
