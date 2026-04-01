@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import alcaldiaLogo from '../assets/alcaldia-logo.png';
 import cucLogo from '../assets/cuc-logo.png';
 import novaLogo from '../assets/nova-logo.png';
@@ -23,10 +25,10 @@ export default function SiteFooter() {
         <div className="site-footer-column">
           <h3>Explorar</h3>
           <ul className="site-footer-links">
-            <li>Emprendimientos destacados</li>
-            <li>Busqueda por categorias</li>
-            <li>Contacto y PQR's</li>
-            <li>Calificaciones y comentarios</li>
+            <li><a href="#emprendimientos" className="footer-link">Destacados</a></li>
+            <li><a href="#funcionalidades" className="footer-link">Funcionalidades</a></li>
+            <li><Link to="/interaccion" className="footer-link">PQR&apos;s</Link></li>
+            <li><Link to="/calificaciones" className="footer-link">Comentarios</Link></li>
           </ul>
         </div>
 
