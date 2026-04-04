@@ -1,400 +1,133 @@
-# Manual Tecnico
+# Soledad Conecta
 
-## Soledad Conecta
+Soledad Conecta es una vitrina digital para emprendimientos locales con frontend en React + Vite y backend en Express. En el estado actual del proyecto, la persistencia funciona con un archivo JSON para facilitar demostraciones y despliegues sencillos.
 
-Despliegue:
+## Estado actual
 
-- [Soledad Conecta en Netlify](https://69c2d0792f6d23c178e284af--soledad-conecta.netlify.app/)
+El proyecto ya incluye:
 
-Soledad Conecta es una plataforma full stack orientada a la promocion de emprendimientos locales mediante una vitrina empresarial digital. El proyecto se encuentra organizado bajo una arquitectura cliente servidor con frontend en React + Vite y backend en Node.js + Express, con integracion prevista hacia MySQL.
+- autenticacion real contra backend
+- registro de postulaciones de emprendedores
+- aprobacion administrativa con generacion automatica de contrasena
+- cambio obligatorio de contrasena en el primer ingreso del emprendedor
+- CRUD administrativo de usuarios y categorias
+- CRUD de microtienda y productos para emprendedores
+- revision administrativa de microtiendas, productos y calificaciones
+- envio real de PQRS
+- persistencia de calificaciones
+- carga de imagenes para logo y productos en formato base64
+- detalle publico por tienda con catalogo visible
+- metricas dinamicas calculadas desde el JSON
+- frontend conectado por `axios`
 
-Este documento describe el estado tecnico actual del sistema, su estructura, modulos implementados en interfaz, backend disponible, rutas principales, configuracion y recomendaciones de continuidad.
-
-## 1. Objetivo del sistema
-
-El sistema busca centralizar:
-
-- visualizacion publica de emprendimientos,
-- navegacion por categorias,
-- busqueda por palabras clave,
-- acceso privado para administradores y emprendedores,
-- gestion de microtiendas,
-- visualizacion de metricas institucionales,
-- interaccion con usuarios por contacto, PQR's, calificaciones y comentarios.
-
-## 2. Arquitectura general
-
-La solucion esta dividida en dos capas principales:
+## Arquitectura
 
 ### Frontend
 
-- tecnologia: React 19 + Vite
-- ubicacion: raiz del proyecto
-- responsabilidad:
-  - interfaz publica,
-  - flujo de login,
-  - panel administrativo,
-  - panel del emprendedor,
-  - navegacion entre modulos.
-
-### Backend
-
-- tecnologia: Node.js + Express
-- ubicacion: [`backend`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend)
-- responsabilidad:
-  - exponer API REST,
-  - gestionar conexion a MySQL,
-  - entregar datos de microtiendas,
-  - centralizar validaciones y manejo de errores.
-
-## 3. Estructura del proyecto
-
-### Frontend
-
-```text
-soledad-conecta/
-├── public/
-├── src/
-│   ├── assets/
-│   ├── components/
-│   │   ├── BrandLogo.jsx
-│   │   ├── ShopCard.jsx
-│   │   └── SiteFooter.jsx
-│   ├── data/
-│   │   ├── dashboardData.js
-│   │   └── marketplaceData.js
-│   ├── pages/
-│   │   ├── AdminPanel.jsx
-│   │   ├── EntrepreneurPanel.jsx
-│   │   ├── Feedback.jsx
-│   │   ├── Home.jsx
-│   │   ├── Interaction.jsx
-│   │   └── Login.jsx
-│   ├── utils/
-│   │   └── session.js
-│   ├── App.css
-│   ├── App.jsx
-│   ├── index.css
-│   └── main.jsx
-├── package.json
-├── vite.config.js
-└── README.md
-```
-
-### Backend
-
-```text
-backend/
-├── src/
-│   ├── config/
-│   │   └── db.js
-│   ├── controllers/
-│   │   └── microtiendaController.js
-│   ├── middlewares/
-│   │   ├── errorHandler.js
-│   │   └── notFoundHandler.js
-│   ├── models/
-│   │   └── microtiendaModel.js
-│   ├── routes/
-│   │   ├── index.js
-│   │   └── microtiendaRoutes.js
-│   ├── services/
-│   │   └── microtiendaService.js
-│   └── app.js
-├── .env.example
-├── package.json
-└── server.js
-```
-
-## 4. Stack tecnico
-
-### Frontend
-
-- React
-- React Router DOM
+- React 19
 - Vite
+- React Router
 - Axios
-- CSS plano modular por componentes y paginas
+- ubicacion: raiz del proyecto
 
 ### Backend
 
 - Node.js
 - Express
-- mysql2
-- dotenv
-- cors
+- persistencia local en `backend/src/data/database.json`
+- ubicacion: [`backend`](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend)
 
-### Base de datos
+## Flujo principal
 
-- MySQL
-- esquema previsto: `vitrina_empresarial`
+1. El emprendedor solicita su registro desde `/login`.
+2. El administrador revisa la postulacion desde el panel admin.
+3. Al aprobarla, el sistema genera una contrasena aleatoria no duplicada.
+4. El emprendedor inicia sesion.
+5. En el primer acceso debe cambiar su contrasena antes de usar el panel.
+6. Luego puede solicitar microtienda, productos y cambios de inventario.
+7. El admin revisa y aprueba solo las solicitudes pendientes.
 
-## 5. Modulos del sistema
+## Rutas frontend
 
-## 5.1 Home publico
+- `/` portal publico
+- `/login` acceso y postulacion de emprendedores
+- `/panel-admin` panel del administrador
+- `/panel-emprendedor` panel del emprendedor
+- `/interaccion` PQRS
+- `/calificaciones` opiniones y valoraciones
+- `/microtiendas/:id` detalle publico de una tienda
 
-Archivo principal: [`src/pages/Home.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\Home.jsx)
+## Credenciales demo base
 
-Funciones actuales:
+- admin: `admin@demo.com` / `123456`
+- emprendedor demo: `emprendedor@demo.com` / `123456`
 
-- navbar con logo institucional,
-- buscador en navbar con lupa,
-- filtro por categoria desde lista desplegable,
-- listado dinamico de emprendimientos,
-- acceso a login,
-- acceso a contacto y PQR's,
-- acceso a calificaciones y comentarios,
-- footer institucional full width.
+Nota importante:
 
-Fuente de datos:
+- las contrasenas nuevas de esta demo se guardan en texto plano para que el administrador pueda verlas facilmente durante la muestra
+- esto es solo para demostracion, no para produccion
 
-- [`src/data/marketplaceData.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\data\marketplaceData.js)
+## Variables de entorno
 
-## 5.2 Login y control de acceso
+### Frontend
 
-Archivo principal: [`src/pages/Login.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\Login.jsx)
+Archivo de ejemplo: [.env.example](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\.env.example)
 
-Funciones actuales:
-
-- selector de acceso por rol:
-  - administrador,
-  - emprendedor.
-- validacion de credenciales demo,
-- persistencia simple de sesion en `localStorage`,
-- redireccion por rol a panel privado.
-
-Utilidad de sesion:
-
-- [`src/utils/session.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\utils\session.js)
-
-## 5.3 Panel administrador
-
-Archivo principal: [`src/pages/AdminPanel.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\AdminPanel.jsx)
-
-Funciones actuales:
-
-- gestion visual de usuarios,
-- visualizacion de categorias del sistema,
-- panel de metricas institucionales,
-- boton de `Logout`,
-- proteccion por rol usando sesion local.
-
-## 5.4 Panel emprendedor
-
-Archivo principal: [`src/pages/EntrepreneurPanel.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\EntrepreneurPanel.jsx)
-
-Funciones actuales:
-
-- vista de microtienda empresarial,
-- ficha del negocio,
-- productos y servicios,
-- metricas institucionales,
-- boton de `Logout`,
-- proteccion por rol usando sesion local.
-
-## 5.5 Contacto y PQR's
-
-Archivo principal: [`src/pages/Interaction.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\Interaction.jsx)
-
-Funciones actuales:
-
-- botones de contacto directo por WhatsApp,
-- formulario visual de PQR's,
-- campos minimos:
-  - nombre,
-  - correo electronico,
-  - tipo de solicitud,
-  - mensaje.
-
-## 5.6 Calificaciones y comentarios
-
-Archivo principal: [`src/pages/Feedback.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\pages\Feedback.jsx)
-
-Funciones actuales:
-
-- promedio de calificacion por emprendimiento,
-- comentarios de ejemplo,
-- formulario visual para registrar valoracion.
-
-## 5.7 Footer institucional
-
-Componente: [`src/components/SiteFooter.jsx`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\components\SiteFooter.jsx)
-
-Elementos incluidos:
-
-- logo Soledad Conecta,
-- logo Nova Evolutions,
-- logo Alcaldia de Soledad,
-- logo CUC,
-- bloques de exploracion y aliados,
-- franja inferior legal/institucional.
-
-## 6. Backend disponible
-
-El backend implementado actualmente expone un modulo base de microtiendas.
-
-Archivos clave:
-
-- [`backend/src/app.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\app.js)
-- [`backend/src/config/db.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\config\db.js)
-- [`backend/src/routes/microtiendaRoutes.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\routes\microtiendaRoutes.js)
-- [`backend/src/controllers/microtiendaController.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\controllers\microtiendaController.js)
-- [`backend/src/services/microtiendaService.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\services\microtiendaService.js)
-- [`backend/src/models/microtiendaModel.js`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\src\models\microtiendaModel.js)
-
-### Endpoints disponibles
-
-- `GET /api`
-- `GET /api/microtiendas`
-- `GET /api/microtiendas/:id`
-
-### Caracteristicas backend
-
-- pool de conexiones MySQL,
-- estructura por capas,
-- validacion de `id`,
-- manejo centralizado de errores,
-- respuesta JSON uniforme.
-
-## 7. Base de datos
-
-Base de datos objetivo:
-
-- `vitrina_empresarial`
-
-Tablas contempladas en el diseño funcional:
-
-- `rol`
-- `usuario`
-- `categoria`
-- `microtienda`
-- `producto`
-- `calificacion`
-- `pqrs`
-- `metrica`
-
-Observacion:
-
-El frontend actual usa datos de demostracion en memoria para representar el comportamiento del sistema. La conexion funcional completa entre frontend y MySQL aun no ha sido finalizada.
-
-## 8. Rutas frontend
-
-- `/` -> Home publico
-- `/login` -> acceso por rol
-- `/panel-admin` -> panel administrador
-- `/panel-emprendedor` -> panel emprendedor
-- `/interaccion` -> contacto y PQR's
-- `/calificaciones` -> calificaciones y comentarios
-
-## 9. Credenciales de demostracion
-
-### Administrador
-
-- correo: `admin@demo.com`
-- contrasena: `123456`
-
-### Emprendedor
-
-- correo: `emprendedor@demo.com`
-- contrasena: `123456`
-
-Nota:
-
-Estas credenciales son de simulacion en frontend. No existe aun autenticacion real con backend ni cifrado de sesiones.
-
-## 10. Logos y recursos graficos
-
-Ubicacion:
-
-- [`src/assets/soledad-logo.png`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\assets\soledad-logo.png)
-- [`src/assets/nova-logo.png`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\assets\nova-logo.png)
-- [`src/assets/alcaldia-logo.png`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\assets\alcaldia-logo.png)
-- [`src/assets/cuc-logo.png`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\src\assets\cuc-logo.png)
-
-## 11. Como ejecutar el proyecto
-
-## 11.1 Frontend
-
-Desde la raiz del proyecto:
-
-```bash
-npm install
-npm run dev
+```env
+VITE_API_URL=http://localhost:4000/api
 ```
 
-Por defecto Vite usa:
+### Backend
 
-- `http://localhost:5173`
-
-## 11.2 Backend
-
-Desde la carpeta [`backend`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend):
-
-```bash
-npm install
-npm run dev
-```
-
-Por defecto Express usa:
-
-- `http://localhost:4000`
-
-## 11.3 Variables de entorno backend
-
-Archivo de referencia:
-
-- [`backend/.env.example`](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\.env.example)
-
-Variables:
+Archivo de ejemplo: [backend/.env.example](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\.env.example)
 
 ```env
 PORT=4000
 CLIENT_URL=http://localhost:5173
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=vitrina_empresarial
-DB_USER=root
-DB_PASSWORD=123456
+AUTH_TOKEN_SECRET=coloca-un-secreto-seguro-aqui
+DATA_FILE=src/data/database.json
 ```
 
-## 12. Estado actual del sistema
+## Ejecucion local
 
-### Implementado
+### Frontend
 
-- estructura base de frontend y backend,
-- navegacion entre modulos,
-- login simulado por roles,
-- paneles separados por rol,
-- modulo publico con busqueda y categorias,
-- modulo de contacto y PQR's,
-- modulo de calificaciones y comentarios,
-- footer institucional full width,
-- backend base de microtiendas.
+```bash
+npm install
+npm run dev
+```
 
-### Pendiente
+### Backend
 
-- autenticacion real con backend,
-- persistencia real de usuarios,
-- CRUD completo de categorias,
-- CRUD real de microtienda y productos,
-- envio real de PQR's,
-- persistencia real de calificaciones,
-- metricas dinamicas desde base de datos,
-- proxy frontend-backend y consumo real con axios.
+```bash
+cd backend
+npm install
+npm run dev
+```
 
-## 13. Riesgos y consideraciones tecnicas
+## Persistencia actual
 
-- la sesion actual se maneja solo con `localStorage`,
-- las credenciales actuales son de demostracion,
-- los modulos visuales no persisten datos aun,
-- el entorno local actual ha presentado bloqueo para `vite build` por restriccion `spawn EPERM`,
-- el README original del template fue reemplazado por este manual tecnico.
+La demo usa [backend/src/data/database.json](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\src\data\database.json).
 
-## 14. Recomendaciones para la siguiente fase
+Este archivo almacena:
 
-1. Implementar autenticacion privada en backend para administrador y emprendedor.
-2. Conectar `Home` al endpoint real de microtiendas.
-3. Persistir categorias desde modulo administrador.
-4. Persistir productos e informacion de microtienda desde panel emprendedor.
-5. Persistir PQRS, calificaciones y metricas en MySQL.
-6. Incorporar validacion de formularios y control de acceso mas robusto.
+- usuarios
+- categorias
+- microtiendas
+- productos
+- calificaciones
+- PQRS
+
+## Documentacion adicional
+
+- manual tecnico: [MANUAL-TECNICO.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-TECNICO.md)
+- manual de despliegue: [MANUAL-DESPLIEGUE.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-DESPLIEGUE.md)
+- backend: [backend/README.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\README.md)
+
+## Despliegue recomendado para demo
+
+- frontend en Netlify
+- backend en Railway
+- volumen en Railway para no perder el JSON en redeploy
+
+El paso a paso completo esta en [MANUAL-DESPLIEGUE.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-DESPLIEGUE.md).

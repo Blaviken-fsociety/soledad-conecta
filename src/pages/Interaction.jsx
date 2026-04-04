@@ -1,32 +1,55 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import BrandLogo from '../components/BrandLogo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
+import { createPqrsRequest, getMicrotiendasRequest } from '../utils/api.js';
 
-const pqrsTypes = ['Peticion', 'Queja', 'Reclamo', 'Sugerencia'];
-
-const contactChannels = [
-  {
-    business: 'Tienda Demo',
-    description: 'Atencion comercial directa con el emprendimiento.',
-    detail: 'Respuesta por catalogo, disponibilidad y medios de pago.',
-    href: 'https://wa.me/573001234567',
-  },
-  {
-    business: 'Sabores de Barrio',
-    description: 'Consulta disponibilidad, pedidos y tiempos de entrega.',
-    detail: 'Ideal para pedidos rapidos y confirmacion de horarios.',
-    href: 'https://wa.me/573009876543',
-  },
-  {
-    business: 'Casa Vital',
-    description: 'Solicita informacion de servicios y agenda comercial.',
-    detail: 'Recibe orientacion sobre servicios, promociones y citas.',
-    href: 'https://wa.me/573005554433',
-  },
-];
+const pqrsTypes = ['PETICION', 'QUEJA', 'RECLAMO', 'SUGERENCIA'];
 
 export default function Interaction() {
+  const [contactChannels, setContactChannels] = useState([]);
+  const [form, setForm] = useState({
+    nombre: '',
+    correo: '',
+    tipo: '',
+    mensaje: '',
+  });
+  const [message, setMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    const loadContactChannels = async () => {
+      try {
+        const microtiendas = await getMicrotiendasRequest();
+        setContactChannels(microtiendas.filter((item) => item.whatsapp));
+      } catch (error) {
+        setErrorMessage(error.message);
+      }
+    };
+
+    loadContactChannels();
+  }, []);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      await createPqrsRequest(form);
+      setForm({
+        nombre: '',
+        correo: '',
+        tipo: '',
+        mensaje: '',
+      });
+      setMessage('PQRS enviada correctamente.');
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage(error.message);
+      setMessage('');
+    }
+  };
+
   return (
     <main className="portal portal-service-page">
       <header className="portal-header portal-home-header sticky-top">
@@ -84,11 +107,11 @@ export default function Interaction() {
                 </p>
                 <div className="service-info-metrics">
                   <div>
-                    <strong>3</strong>
+                    <strong>{contactChannels.length}</strong>
                     <span>canales de contacto directo</span>
                   </div>
                   <div>
-                    <strong>4</strong>
+                    <strong>{pqrsTypes.length}</strong>
                     <span>tipos de solicitud disponibles</span>
                   </div>
                 </div>
@@ -103,22 +126,20 @@ export default function Interaction() {
           <div className="section-heading mb-4">
             <p className="section-kicker">Contacto comercial</p>
             <h2>Canales directos para resolver dudas y activar conversaciones.</h2>
-            <p>
-              Cada acceso prioriza rapidez, claridad y continuidad en la atencion.
-            </p>
+            <p>Cada acceso prioriza rapidez, claridad y continuidad en la atencion.</p>
           </div>
 
           <div className="contact-grid service-contact-grid">
             {contactChannels.map((channel) => (
-              <article key={channel.business} className="contact-card service-contact-card">
+              <article key={channel.id} className="contact-card service-contact-card">
                 <div className="service-contact-top">
                   <span className="shop-badge">WhatsApp</span>
-                  <h3>{channel.business}</h3>
+                  <h3>{channel.nombre}</h3>
                 </div>
-                <p>{channel.description}</p>
-                <p className="service-contact-detail">{channel.detail}</p>
+                <p>{channel.descripcion}</p>
+                <p className="service-contact-detail">{channel.redesSociales || 'Contacto comercial directo.'}</p>
                 <a
-                  href={channel.href}
+                  href={`https://wa.me/57${channel.whatsapp}`}
                   target="_blank"
                   rel="noreferrer"
                   className="primary-button"
@@ -136,21 +157,36 @@ export default function Interaction() {
           <div className="section-heading mb-4">
             <p className="section-kicker">Sistema PQRS</p>
             <h2>Registro de peticiones, quejas, reclamos y sugerencias.</h2>
-            <p>
-              Un formulario claro para reportes formales, seguimiento y mejora continua.
-            </p>
+            <p>Un formulario claro para reportes formales, seguimiento y mejora continua.</p>
           </div>
 
           <div className="pqrs-layout service-pqrs-layout">
-            <form className="pqrs-form service-pqrs-form">
+            <form className="pqrs-form service-pqrs-form" onSubmit={handleSubmit}>
               <div className="service-form-grid">
-                <input type="text" placeholder="Nombre completo" />
-                <input type="email" placeholder="Correo electronico" />
+                <input
+                  type="text"
+                  placeholder="Nombre completo"
+                  value={form.nombre}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, nombre: event.target.value }))
+                  }
+                />
+                <input
+                  type="email"
+                  placeholder="Correo electronico"
+                  value={form.correo}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, correo: event.target.value }))
+                  }
+                />
               </div>
-              <select defaultValue="">
-                <option value="" disabled>
-                  Selecciona el tipo de solicitud
-                </option>
+              <select
+                value={form.tipo}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, tipo: event.target.value }))
+                }
+              >
+                <option value="">Selecciona el tipo de solicitud</option>
                 {pqrsTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -160,10 +196,16 @@ export default function Interaction() {
               <textarea
                 rows="6"
                 placeholder="Describe tu solicitud con el mayor detalle posible"
+                value={form.mensaje}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, mensaje: event.target.value }))
+                }
               ></textarea>
-              <button type="button" className="primary-button hero-primary-button">
+              <button type="submit" className="primary-button hero-primary-button">
                 Enviar PQRS
               </button>
+              {message ? <p className="form-success">{message}</p> : null}
+              {errorMessage ? <p className="login-error">{errorMessage}</p> : null}
             </form>
 
             <article className="microstore-card service-pqrs-aside">

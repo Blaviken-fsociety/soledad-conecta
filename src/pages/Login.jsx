@@ -3,8 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../components/BrandLogo.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
-import { loginRequest } from '../utils/api.js';
+import { createEntrepreneurRequest, loginRequest } from '../utils/api.js';
 import { saveSession } from '../utils/session.js';
+
+const emptyRequestForm = {
+  nombre: '',
+  tipoDocumento: '',
+  numeroDocumento: '',
+  direccion: '',
+  telefono: '',
+  correo: '',
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,10 +22,14 @@ export default function Login() {
     email: '',
     password: '',
   });
+  const [requestForm, setRequestForm] = useState(emptyRequestForm);
   const [loginError, setLoginError] = useState('');
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestError, setRequestError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (event) => {
+    event?.preventDefault();
     setIsSubmitting(true);
 
     try {
@@ -36,6 +49,22 @@ export default function Login() {
     }
   };
 
+  const handleEntrepreneurRequest = async (event) => {
+    event.preventDefault();
+
+    try {
+      await createEntrepreneurRequest(requestForm);
+      setRequestForm(emptyRequestForm);
+      setRequestMessage(
+        'Solicitud enviada. El administrador revisara tus datos y te asignara contrasena si aprueba el registro.',
+      );
+      setRequestError('');
+    } catch (error) {
+      setRequestError(error.message);
+      setRequestMessage('');
+    }
+  };
+
   return (
     <main className="portal admin-page">
       <header className="portal-header">
@@ -50,21 +79,18 @@ export default function Login() {
       <section className="admin-hero">
         <div className="hero-copy">
           <span className="eyebrow">Acceso y gestion</span>
-          <h1>Login institucional y acceso empresarial</h1>
+          <h1>Login institucional y postulacion de emprendedores</h1>
           <p className="hero-text">
-            Desde esta pantalla se valida el acceso al panel del administrador o
-            al panel del emprendedor. Cada rol es redirigido a su espacio
-            privado despues del login.
+            El emprendedor primero diligencia su solicitud. Luego el administrador
+            revisa los datos, asigna una contrasena y habilita el acceso.
           </p>
         </div>
 
         <aside className="hero-panel">
-          <h2>Regla de sesion</h2>
-          <p>
-            El administrador puede crear usuarios nuevos en la base de datos.
-            El emprendedor accede a su panel privado usando autenticacion real
-            contra el backend.
-          </p>
+          <h2>Flujo de acceso</h2>
+          <p>1. El emprendedor se registra.</p>
+          <p>2. El administrador valida y aprueba.</p>
+          <p>3. El emprendedor ya puede iniciar sesion y solicitar publicaciones.</p>
         </aside>
       </section>
 
@@ -79,46 +105,27 @@ export default function Login() {
           </button>
           <button
             type="button"
-            className={
-              activeAccess === 'entrepreneur'
-                ? 'access-tab access-tab-active'
-                : 'access-tab'
-            }
+            className={activeAccess === 'entrepreneur' ? 'access-tab access-tab-active' : 'access-tab'}
             onClick={() => setActiveAccess('entrepreneur')}
           >
             Emprendedor
           </button>
         </div>
 
-        <div className="login-panel">
-          <div className="login-copy">
-            <p className="section-kicker">
-              {activeAccess === 'admin' ? 'Acceso institucional' : 'Acceso empresarial'}
-            </p>
-            <h3>
-              {activeAccess === 'admin'
-                ? 'Ingreso del administrador'
-                : 'Ingreso del emprendedor'}
-            </h3>
-            <p>
-              {activeAccess === 'admin'
-                ? 'Valida el acceso al panel de gestion institucional del sistema.'
-                : 'Valida el acceso al panel privado de microtienda y metricas.'}
-            </p>
-          </div>
+        <div className="admin-user-layout">
+          <form className="admin-user-form" onSubmit={handleLogin}>
+            <div className="section-heading">
+              <p className="section-kicker">
+                {activeAccess === 'admin' ? 'Acceso institucional' : 'Acceso habilitado'}
+              </p>
+              <h3>{activeAccess === 'admin' ? 'Ingreso del administrador' : 'Ingreso del emprendedor'}</h3>
+              <p>Puedes presionar Enter para iniciar sesion sin usar el mouse.</p>
+            </div>
 
-          <form className="login-form">
-            <label className="sr-only" htmlFor="access-email">
-              Correo institucional
-            </label>
             <input
               id="access-email"
               type="email"
-              placeholder={
-                activeAccess === 'admin'
-                  ? 'Correo del administrador'
-                  : 'Correo del emprendedor'
-              }
+              placeholder={activeAccess === 'admin' ? 'Correo del administrador' : 'Correo del emprendedor'}
               value={credentials.email}
               onChange={(event) =>
                 setCredentials((current) => ({
@@ -127,9 +134,6 @@ export default function Login() {
                 }))
               }
             />
-            <label className="sr-only" htmlFor="access-password">
-              Contrasena
-            </label>
             <input
               id="access-password"
               type="password"
@@ -142,10 +146,37 @@ export default function Login() {
                 }))
               }
             />
-            <button type="button" onClick={handleLogin}>
+            <button type="submit" className="primary-button">
               {isSubmitting ? 'Validando...' : 'Entrar'}
             </button>
             {loginError ? <p className="login-error">{loginError}</p> : null}
+          </form>
+
+          <form className="admin-user-form" onSubmit={handleEntrepreneurRequest}>
+            <div className="section-heading">
+              <p className="section-kicker">Postulacion</p>
+              <h3>Solicitar registro como emprendedor</h3>
+            </div>
+
+            <input type="text" placeholder="Nombre completo" value={requestForm.nombre} onChange={(event) => setRequestForm((current) => ({ ...current, nombre: event.target.value }))} />
+            <div className="service-form-grid">
+              <select value={requestForm.tipoDocumento} onChange={(event) => setRequestForm((current) => ({ ...current, tipoDocumento: event.target.value }))}>
+                <option value="">Tipo de documento</option>
+                <option value="CC">Cedula</option>
+                <option value="TI">Tarjeta de identidad</option>
+                <option value="CE">Cedula de extranjeria</option>
+                <option value="PAS">Pasaporte</option>
+              </select>
+              <input type="text" placeholder="Numero de documento" value={requestForm.numeroDocumento} onChange={(event) => setRequestForm((current) => ({ ...current, numeroDocumento: event.target.value }))} />
+            </div>
+            <input type="text" placeholder="Direccion" value={requestForm.direccion} onChange={(event) => setRequestForm((current) => ({ ...current, direccion: event.target.value }))} />
+            <input type="text" placeholder="Telefono" value={requestForm.telefono} onChange={(event) => setRequestForm((current) => ({ ...current, telefono: event.target.value }))} />
+            <input type="email" placeholder="Correo electronico" value={requestForm.correo} onChange={(event) => setRequestForm((current) => ({ ...current, correo: event.target.value }))} />
+            <button type="submit" className="primary-button">
+              Enviar solicitud
+            </button>
+            {requestMessage ? <p className="form-success">{requestMessage}</p> : null}
+            {requestError ? <p className="login-error">{requestError}</p> : null}
           </form>
         </div>
       </section>

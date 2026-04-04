@@ -5,24 +5,28 @@ import soledadLogo from '../assets/soledad-logo.png';
 import BrandLogo from '../components/BrandLogo.jsx';
 import ShopCard from '../components/ShopCard.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
-import { categories, featuredShops } from '../data/marketplaceData.js';
+import {
+  getCategoriesRequest,
+  getMicrotiendasRequest,
+  getRatingsSummaryRequest,
+} from '../utils/api.js';
 
 const portalFeatures = [
   {
-    title: 'Explorar emprendimientos',
-    description: 'Descubre negocios locales con visibilidad clara y actualizada.',
+    title: 'Descubre negocios reales',
+    description: 'Explora emprendimientos con identidad visual, categoria y contacto directo.',
   },
   {
-    title: 'Consultar catalogos',
-    description: 'Revisa productos y servicios antes de contactar al negocio.',
+    title: 'Consulta catalogos activos',
+    description: 'Revisa productos, servicios y vitrinas publicadas por cada emprendimiento.',
   },
   {
-    title: 'Filtrar por categorias',
-    description: 'Encuentra resultados por sector sin perder tiempo en la busqueda.',
+    title: 'Filtra sin perder tiempo',
+    description: 'Combina busqueda por texto y categorias para llegar rapido al resultado.',
   },
   {
-    title: 'Conectar con la comunidad',
-    description: 'Activa contacto, PQRs y comentarios desde una sola experiencia.',
+    title: 'Conecta y opina',
+    description: 'Activa contacto por WhatsApp, envia PQRs y deja calificaciones desde el portal.',
   },
 ];
 
@@ -48,43 +52,30 @@ const portalGrid = [
   'Comentarios y confianza social para el visitante.',
 ];
 
-const topRatedHighlights = [
-  {
-    category: 'Moda',
-    name: 'Tienda Demo',
-    description: 'Catalogo claro, contacto inmediato y mejor presencia visual.',
-    rating: '4.9',
-    theme: 'hero-visual-yellow',
-  },
-  {
-    category: 'Alimentos',
-    name: 'Sabores de Barrio',
-    description: 'Resultados con mas foco en descripcion, categoria y accion.',
-    rating: '4.8',
-    theme: 'hero-visual-blue',
-  },
-];
-
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [showIntro, setShowIntro] = useState(true);
   const [introSettled, setIntroSettled] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [microtiendas, setMicrotiendas] = useState([]);
+  const [topRatedHighlights, setTopRatedHighlights] = useState([]);
+  const [loadError, setLoadError] = useState('');
   const carouselRef = useRef(null);
 
-  const visibleCategories = ['Todas', ...categories];
+  const visibleCategories = ['Todas', ...categories.map((category) => category.nombre)];
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  const filteredShops = featuredShops.filter((shop) => {
+  const filteredShops = microtiendas.filter((shop) => {
     const matchesCategory =
-      selectedCategory === 'Todas' || shop.category === selectedCategory;
+      selectedCategory === 'Todas' || shop.categoria === selectedCategory;
 
     const searchSource = [
-      shop.name,
-      shop.sector,
-      shop.category,
-      shop.description,
-      ...(shop.keywords || []),
+      shop.nombre,
+      shop.sectorEconomico,
+      shop.categoria,
+      shop.descripcion,
+      shop.propietario,
     ]
       .join(' ')
       .toLowerCase();
@@ -108,6 +99,27 @@ export default function Home() {
       window.clearTimeout(collapseTimer);
       window.clearTimeout(removeTimer);
     };
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedCategories, fetchedMicrotiendas, ratingSummary] = await Promise.all([
+          getCategoriesRequest(true),
+          getMicrotiendasRequest(),
+          getRatingsSummaryRequest(),
+        ]);
+
+        setCategories(fetchedCategories);
+        setMicrotiendas(fetchedMicrotiendas);
+        setTopRatedHighlights(ratingSummary.slice(0, 2));
+        setLoadError('');
+      } catch (error) {
+        setLoadError(error.message);
+      }
+    };
+
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -198,11 +210,7 @@ export default function Home() {
                     onChange={(event) => setSearchTerm(event.target.value)}
                   />
                   <button type="submit" className="search-icon-button" aria-label="Buscar">
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="search-icon-svg"
-                    >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="search-icon-svg">
                       <path
                         d="M10.5 4a6.5 6.5 0 1 0 4.09 11.55l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
                         fill="currentColor"
@@ -262,7 +270,7 @@ export default function Home() {
 
                 <div className="hero-status-strip">
                   <div>
-                    <strong>{featuredShops.length}+</strong>
+                    <strong>{microtiendas.length}+</strong>
                     <span>emprendimientos visibles</span>
                   </div>
                   <div>
@@ -270,8 +278,8 @@ export default function Home() {
                     <span>categorias activas</span>
                   </div>
                   <div>
-                    <strong>24/7</strong>
-                    <span>consulta publica</span>
+                    <strong>{topRatedHighlights.length}</strong>
+                    <span>negocios destacados por calificacion</span>
                   </div>
                 </div>
               </div>
@@ -290,19 +298,21 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="hero-visual-stack">
-                  {topRatedHighlights.map((item) => (
+                  {topRatedHighlights.map((item, index) => (
                     <div
-                      key={item.name}
-                      className={`hero-visual-panel hero-visual-side ${item.theme}`}
+                      key={item.microtiendaId}
+                      className={`hero-visual-panel hero-visual-side ${
+                        index % 2 === 0 ? 'hero-visual-yellow' : 'hero-visual-blue'
+                      }`}
                     >
                       <div className="hero-visual-rating">
-                        <span>{item.category}</span>
-                        <strong>{item.rating}</strong>
+                        <span>Calificacion</span>
+                        <strong>{item.promedio.toFixed(1)}</strong>
                       </div>
-                      <h3>{item.name}</h3>
-                      <p>{item.description}</p>
+                      <h3>{item.microtienda}</h3>
+                      <p>{item.comentarioDestacado}</p>
                       <div className="hero-visual-side-footer">
-                        <span>Destacado por calificacion</span>
+                        <span>{item.totalCalificaciones} opiniones registradas</span>
                       </div>
                     </div>
                   ))}
@@ -318,8 +328,8 @@ export default function Home() {
       <section className="feature-strip-section" id="funcionalidades" data-reveal="fade-up">
         <div className="container-xxl">
           <div className="section-heading mb-4">
-            <p className="section-kicker">Que debe permitir el portal</p>
-            <h2>Funciones visibles sin caer en una grilla de cards repetidas.</h2>
+            <p className="section-kicker">Experiencia principal</p>
+            <h2>Todo lo importante del portal en una sola franja clara y util.</h2>
           </div>
 
           <div className="portal-feature-strip">
@@ -419,7 +429,12 @@ export default function Home() {
             </div>
           </div>
 
-          {filteredShops.length > 0 ? (
+          {loadError ? (
+            <div className="empty-state">
+              <h3>No fue posible cargar el marketplace</h3>
+              <p>{loadError}</p>
+            </div>
+          ) : filteredShops.length > 0 ? (
             <div className="marketplace-carousel" ref={carouselRef} role="list">
               {filteredShops.map((shop) => (
                 <ShopCard key={shop.id} shop={shop} />
