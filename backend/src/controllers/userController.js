@@ -1,4 +1,11 @@
-import { createUserService, getUsersService } from '../services/userService.js';
+import {
+  changeMyPasswordService,
+  createEntrepreneurRequestService,
+  createUserService,
+  deleteUserService,
+  getUsersService,
+  updateUserService,
+} from '../services/userService.js';
 
 export const getUsers = async (_request, response, next) => {
   try {
@@ -18,6 +25,60 @@ export const createUser = async (request, response, next) => {
     const user = await createUserService(request.body);
 
     response.status(201).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createEntrepreneurRequest = async (request, response, next) => {
+  try {
+    const user = await createEntrepreneurRequestService(request.body);
+
+    response.status(201).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUser = async (request, response, next) => {
+  try {
+    const user = await updateUserService(request.params.id, request.body);
+
+    response.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser = async (request, response, next) => {
+  try {
+    await deleteUserService(request.params.id);
+
+    response.status(200).json({
+      success: true,
+      data: {
+        deleted: true,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changeMyPassword = async (request, response, next) => {
+  try {
+    const user = await changeMyPasswordService(request.auth, request.body);
+
+    response.status(200).json({
       success: true,
       data: user,
     });

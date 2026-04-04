@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS producto (
 CREATE TABLE IF NOT EXISTS calificacion (
     id_calificacion INT AUTO_INCREMENT PRIMARY KEY,
     puntuacion INT CHECK (puntuacion BETWEEN 1 AND 5),
+    nombre_visitante VARCHAR(100) DEFAULT 'Visitante',
     comentario TEXT,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     id_producto INT,
@@ -64,6 +65,9 @@ CREATE TABLE IF NOT EXISTS calificacion (
     FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
     FOREIGN KEY (id_microtienda) REFERENCES microtienda(id_microtienda)
 );
+
+ALTER TABLE calificacion
+ADD COLUMN IF NOT EXISTS nombre_visitante VARCHAR(100) DEFAULT 'Visitante';
 
 CREATE TABLE IF NOT EXISTS pqrs (
     id_pqrs INT AUTO_INCREMENT PRIMARY KEY,
@@ -132,7 +136,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO usuario (nombre, correo, password, id_rol)
-SELECT 'Admin', 'admin@demo.com', '123456', r.id_rol
+SELECT 'Admin', 'admin@demo.com', SHA2('123456', 256), r.id_rol
 FROM rol r
 WHERE r.nombre = 'ADMINISTRADOR'
   AND NOT EXISTS (
@@ -140,7 +144,7 @@ WHERE r.nombre = 'ADMINISTRADOR'
   );
 
 INSERT INTO usuario (nombre, correo, password, id_rol)
-SELECT 'Emprendedor Demo', 'emprendedor@demo.com', '123456', r.id_rol
+SELECT 'Emprendedor Demo', 'emprendedor@demo.com', SHA2('123456', 256), r.id_rol
 FROM rol r
 WHERE r.nombre = 'EMPRENDEDOR'
   AND NOT EXISTS (

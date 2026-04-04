@@ -1,4 +1,4 @@
-export const errorHandler = (error, _request, response, _next) => {
+export const errorHandler = (error, _request, response) => {
   const status = error.statusCode || 500;
 
   response.status(status).json({

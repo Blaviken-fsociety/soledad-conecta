@@ -27,6 +27,22 @@ export const getSessionToken = () => {
   return getSession()?.token || null;
 };
 
+export const updateSessionUser = (userPatch) => {
+  const currentSession = getSession();
+
+  if (!currentSession) {
+    return;
+  }
+
+  saveSession({
+    ...currentSession,
+    user: {
+      ...currentSession.user,
+      ...userPatch,
+    },
+  });
+};
+
 export const clearSession = () => {
   localStorage.removeItem(SESSION_KEY);
 };
