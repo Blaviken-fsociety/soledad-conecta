@@ -1,26 +1,26 @@
 # Soledad Conecta
 
-Soledad Conecta es una vitrina digital para emprendimientos locales con frontend en React + Vite y backend en Express. En el estado actual del proyecto, la persistencia funciona con un archivo JSON para facilitar demostraciones y despliegues sencillos.
+Despliegue en linea:
 
-## Estado actual
+- [Soledad Conecta en Netlify](https://69c2d0792f6d23c178e284af--soledad-conecta.netlify.app/)
 
-El proyecto ya incluye:
+Soledad Conecta es una vitrina digital para emprendimientos locales. El proyecto combina un frontend en React + Vite con un backend en Express, e integra autenticacion, postulacion de emprendedores, gestion administrativa, microtiendas, productos, PQRS, calificaciones y metricas.
 
-- autenticacion real contra backend
-- registro de postulaciones de emprendedores
-- aprobacion administrativa con generacion automatica de contrasena
-- cambio obligatorio de contrasena en el primer ingreso del emprendedor
-- CRUD administrativo de usuarios y categorias
-- CRUD de microtienda y productos para emprendedores
-- revision administrativa de microtiendas, productos y calificaciones
-- envio real de PQRS
-- persistencia de calificaciones
-- carga de imagenes para logo y productos en formato base64
-- detalle publico por tienda con catalogo visible
-- metricas dinamicas calculadas desde el JSON
-- frontend conectado por `axios`
+## Resumen del sistema
 
-## Arquitectura
+Actualmente el proyecto incluye:
+
+- portal publico con buscador y detalle de microtiendas
+- login por roles
+- postulacion de emprendedores
+- panel administrador
+- panel emprendedor
+- gestion de categorias, microtiendas y productos
+- PQRS
+- calificaciones y comentarios
+- metricas institucionales
+
+## Stack principal
 
 ### Frontend
 
@@ -28,58 +28,37 @@ El proyecto ya incluye:
 - Vite
 - React Router
 - Axios
-- ubicacion: raiz del proyecto
 
 ### Backend
 
 - Node.js
 - Express
-- persistencia local en `backend/src/data/database.json`
-- ubicacion: [`backend`](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend)
+- persistencia actual en JSON para demostracion
 
-## Flujo principal
-
-1. El emprendedor solicita su registro desde `/login`.
-2. El administrador revisa la postulacion desde el panel admin.
-3. Al aprobarla, el sistema genera una contrasena aleatoria no duplicada.
-4. El emprendedor inicia sesion.
-5. En el primer acceso debe cambiar su contrasena antes de usar el panel.
-6. Luego puede solicitar microtienda, productos y cambios de inventario.
-7. El admin revisa y aprueba solo las solicitudes pendientes.
-
-## Rutas frontend
+## Rutas principales
 
 - `/` portal publico
-- `/login` acceso y postulacion de emprendedores
+- `/login` acceso y postulacion
 - `/panel-admin` panel del administrador
 - `/panel-emprendedor` panel del emprendedor
-- `/interaccion` PQRS
+- `/interaccion` contacto y PQR's
 - `/calificaciones` opiniones y valoraciones
 - `/microtiendas/:id` detalle publico de una tienda
 
-## Credenciales demo base
+## Credenciales demo
 
 - admin: `admin@demo.com` / `123456`
 - emprendedor demo: `emprendedor@demo.com` / `123456`
 
-Nota importante:
-
-- las contrasenas nuevas de esta demo se guardan en texto plano para que el administrador pueda verlas facilmente durante la muestra
-- esto es solo para demostracion, no para produccion
-
 ## Variables de entorno
 
 ### Frontend
-
-Archivo de ejemplo: [.env.example](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\.env.example)
 
 ```env
 VITE_API_URL=http://localhost:4000/api
 ```
 
 ### Backend
-
-Archivo de ejemplo: [backend/.env.example](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\.env.example)
 
 ```env
 PORT=4000
@@ -105,29 +84,35 @@ npm install
 npm run dev
 ```
 
-## Persistencia actual
+## Despliegue
 
-La demo usa [backend/src/data/database.json](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\src\data\database.json).
-
-Este archivo almacena:
-
-- usuarios
-- categorias
-- microtiendas
-- productos
-- calificaciones
-- PQRS
-
-## Documentacion adicional
-
-- manual tecnico: [MANUAL-TECNICO.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-TECNICO.md)
-- manual de despliegue: [MANUAL-DESPLIEGUE.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-DESPLIEGUE.md)
-- backend: [backend/README.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\README.md)
-
-## Despliegue recomendado para demo
+Configuracion recomendada:
 
 - frontend en Netlify
 - backend en Railway
-- volumen en Railway para no perder el JSON en redeploy
+- volumen persistente en Railway para el archivo JSON
 
-El paso a paso completo esta en [MANUAL-DESPLIEGUE.md](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\MANUAL-DESPLIEGUE.md).
+Resumen rapido:
+
+1. desplegar primero el backend en Railway
+2. configurar `CLIENT_URL` en backend
+3. configurar `VITE_API_URL` en Netlify
+4. desplegar frontend
+
+Guia completa:
+
+- [MANUAL-DESPLIEGUE.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-DESPLIEGUE.md)
+
+## Documentacion
+
+- manual tecnico completo: [MANUAL-TECNICO.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-TECNICO.md)
+- manual de despliegue: [MANUAL-DESPLIEGUE.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-DESPLIEGUE.md)
+- backend: [backend/README.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\README.md)
+
+## Nota
+
+La documentacion extensa se mantiene separada a proposito:
+
+- `README.md` como entrada rapida al proyecto
+- `MANUAL-TECNICO.md` como referencia funcional y arquitectonica
+- `MANUAL-DESPLIEGUE.md` como guia operativa de publicacion
