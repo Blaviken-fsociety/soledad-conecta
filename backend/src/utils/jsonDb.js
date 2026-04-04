@@ -9,31 +9,65 @@ const filePath = process.env.DATA_FILE
   ? path.resolve(process.cwd(), process.env.DATA_FILE)
   : defaultFilePath;
 
+const createEmptyDb = () => ({
+  roles: [],
+  usuarios: [],
+  categorias: [],
+  microtiendas: [],
+  productos: [],
+  calificaciones: [],
+  pqrs: [],
+  metricas: [],
+});
+
+const isDatabaseEmpty = (data) => {
+  return [
+    data.roles,
+    data.usuarios,
+    data.categorias,
+    data.microtiendas,
+    data.productos,
+    data.calificaciones,
+    data.pqrs,
+  ].every((collection) => Array.isArray(collection) && collection.length === 0);
+};
+
+const getSeedData = async () => {
+  if (filePath === defaultFilePath) {
+    return createEmptyDb();
+  }
+
+  try {
+    const rawSeed = await fs.readFile(defaultFilePath, 'utf8');
+    return JSON.parse(rawSeed);
+  } catch {
+    return createEmptyDb();
+  }
+};
+
 const ensureFile = async () => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 
   try {
     await fs.access(filePath);
   } catch {
-    const emptyDb = {
-      roles: [],
-      usuarios: [],
-      categorias: [],
-      microtiendas: [],
-      productos: [],
-      calificaciones: [],
-      pqrs: [],
-      metricas: [],
-    };
-
-    await fs.writeFile(filePath, JSON.stringify(emptyDb, null, 2), 'utf8');
+    const seedData = await getSeedData();
+    await fs.writeFile(filePath, JSON.stringify(seedData, null, 2), 'utf8');
   }
 };
 
 export const readData = async () => {
   await ensureFile();
   const raw = await fs.readFile(filePath, 'utf8');
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+
+  if (filePath !== defaultFilePath && isDatabaseEmpty(parsed)) {
+    const seedData = await getSeedData();
+    await fs.writeFile(filePath, JSON.stringify(seedData, null, 2), 'utf8');
+    return seedData;
+  }
+
+  return parsed;
 };
 
 export const writeData = async (data) => {
