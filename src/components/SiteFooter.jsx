@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import alcaldiaLogo from '../assets/alcaldia-logo.png';
 import cucLogo from '../assets/cuc-logo.png';
@@ -6,6 +6,19 @@ import novaLogo from '../assets/nova-logo.png';
 import soledadLogo from '../assets/soledad-logo.png';
 
 export default function SiteFooter() {
+  const { pathname } = useLocation();
+  const isHome = pathname === '/';
+
+  const handleExternalNavigation = (url) => {
+    const shouldOpen = window.confirm(
+      'Sera redireccionado a una pagina externa. Desea continuar?',
+    );
+
+    if (shouldOpen) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <footer className="site-footer">
       <div className="site-footer-main">
@@ -25,8 +38,8 @@ export default function SiteFooter() {
         <div className="site-footer-column">
           <h3>Explorar</h3>
           <ul className="site-footer-links">
-            <li><a href="#emprendimientos" className="footer-link">Destacados</a></li>
-            <li><a href="#funcionalidades" className="footer-link">Funcionalidades</a></li>
+            {isHome ? <li><a href="#emprendimientos" className="footer-link">Destacados</a></li> : null}
+            {isHome ? <li><a href="#funcionalidades" className="footer-link">Funcionalidades</a></li> : null}
             <li><Link to="/interaccion" className="footer-link">PQR&apos;s</Link></li>
             <li><Link to="/calificaciones" className="footer-link">Comentarios</Link></li>
           </ul>
@@ -37,16 +50,28 @@ export default function SiteFooter() {
           <div className="site-footer-allies">
             <div className="site-footer-ally">
               <span>Aliado tecnologico</span>
-              <img src={novaLogo} alt="Nova Evolutions" className="site-footer-logo" />
+              <button
+                type="button"
+                className="site-footer-logo-button"
+                onClick={() => handleExternalNavigation('https://nova-evolutions.netlify.app/')}
+              >
+                <img src={novaLogo} alt="Nova Evolutions" className="site-footer-logo" />
+              </button>
             </div>
 
             <div className="site-footer-ally">
               <span>Apoyo institucional</span>
-              <img
-                src={alcaldiaLogo}
-                alt="Alcaldia de Soledad"
-                className="site-footer-logo"
-              />
+              <button
+                type="button"
+                className="site-footer-logo-button"
+                onClick={() => handleExternalNavigation('https://www.soledad-atlantico.gov.co/')}
+              >
+                <img
+                  src={alcaldiaLogo}
+                  alt="Alcaldia de Soledad"
+                  className="site-footer-logo"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -55,11 +80,17 @@ export default function SiteFooter() {
           <h3>Academia</h3>
           <div className="site-footer-ally">
             <span>Proyecto propuesto por</span>
-            <img
-              src={cucLogo}
-              alt="CUC"
-              className="site-footer-logo"
-            />
+            <button
+              type="button"
+              className="site-footer-logo-button"
+              onClick={() => handleExternalNavigation('https://www.cuc.edu.co/')}
+            >
+              <img
+                src={cucLogo}
+                alt="CUC"
+                className="site-footer-logo"
+              />
+            </button>
             <p className="site-footer-support-text">
               Participacion academica en la formulacion de la iniciativa.
             </p>
