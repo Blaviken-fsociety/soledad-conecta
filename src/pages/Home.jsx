@@ -234,7 +234,7 @@ export default function Home() {
                 </label>
 
                 <Link to="/login" className="login-button">
-                  Login
+                  Inicio de sesión
                 </Link>
               </nav>
             </div>
@@ -329,7 +329,6 @@ export default function Home() {
         <div className="container-xxl">
           <div className="section-heading mb-4">
             <p className="section-kicker">Experiencia principal</p>
-            <h2>Todo lo importante del portal en una sola franja clara y util.</h2>
           </div>
 
           <div className="portal-feature-strip">
@@ -352,7 +351,6 @@ export default function Home() {
         <div className="container-xxl">
           <div className="section-heading mb-4">
             <p className="section-kicker">Espacios clave del portal</p>
-            <h2>Una estructura mas variada para contar mejor el ecosistema.</h2>
           </div>
 
           <div className="portal-space-block portal-space-block-light">
@@ -417,15 +415,6 @@ export default function Home() {
                 Resultados dinamicos para categoria <strong>{selectedCategory}</strong>
                 {normalizedSearch ? ` y busqueda "${searchTerm}"` : ''}.
               </p>
-            </div>
-
-            <div className="marketplace-controls" aria-label="Controles del carrusel">
-              <button type="button" className="marketplace-control" onClick={() => scrollMarketplace(-1)}>
-                Anterior
-              </button>
-              <button type="button" className="marketplace-control" onClick={() => scrollMarketplace(1)}>
-                Siguiente
-              </button>
             </div>
           </div>
 

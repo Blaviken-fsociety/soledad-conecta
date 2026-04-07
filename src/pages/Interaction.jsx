@@ -31,6 +31,30 @@ export default function Interaction() {
     loadContactChannels();
   }, []);
 
+  useEffect(() => {
+    const elements = Array.from(document.querySelectorAll('[data-reveal]'));
+
+    if (elements.length === 0) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -50px 0px' },
+    );
+
+    elements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, []);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -52,19 +76,19 @@ export default function Interaction() {
 
   return (
     <main className="portal portal-service-page">
-      <header className="portal-header portal-home-header sticky-top">
+      <header className="portal-header portal-home-header portal-home-toolbar">
         <div className="container-xxl">
-          <div className="navbar-shell">
+          <div className="navbar-shell home-toolbar-shell">
             <div className="navbar-brand-slot">
               <BrandLogo />
             </div>
 
             <div className="navbar-actions-slot">
-              <nav className="header-actions service-header-actions" aria-label="Navegacion publica">
-                <Link to="/" className="secondary-button service-header-button">
+              <nav className="header-actions service-header-actions home-toolbar-actions" aria-label="Navegacion publica">
+                <Link to="/" className="btn portal-btn portal-btn-secondary service-header-button">
                   Volver al portal
                 </Link>
-                <Link to="/calificaciones" className="header-link service-header-button">
+                <Link to="/calificaciones" className="btn portal-btn portal-btn-outline service-header-button">
                   Comentarios
                 </Link>
               </nav>
@@ -73,23 +97,22 @@ export default function Interaction() {
         </div>
       </header>
 
-      <section className="service-hero-section">
+      <section className="service-hero-section" data-reveal="fade-up">
         <div className="container-xxl">
           <div className="row g-4 align-items-stretch">
             <div className="col-12 col-lg-7">
               <div className="hero-copy service-hero-copy">
-                <span className="eyebrow">Modulo 6</span>
                 <h1>Contacto comercial y gestion de PQR&apos;s con una experiencia mas clara.</h1>
                 <p className="hero-text">
-                  Este modulo concentra el contacto institucional con los
+                  Este espacio concentra el contacto institucional con los
                   emprendimientos y el registro formal de peticiones, quejas,
                   reclamos y sugerencias del portal.
                 </p>
                 <div className="hero-actions">
-                  <a href="#formulario-pqrs" className="primary-button hero-primary-button">
+                  <a href="#formulario-pqrs" className="btn portal-btn portal-btn-primary hero-primary-button">
                     Enviar solicitud
                   </a>
-                  <a href="#contacto-comercial" className="secondary-button">
+                  <a href="#contacto-comercial" className="btn portal-btn portal-btn-secondary">
                     Ver canales
                   </a>
                 </div>
@@ -121,7 +144,7 @@ export default function Interaction() {
         </div>
       </section>
 
-      <section className="interaction-section service-section" id="contacto-comercial">
+      <section className="interaction-section service-section" id="contacto-comercial" data-reveal="fade-left">
         <div className="container-xxl">
           <div className="section-heading mb-4">
             <p className="section-kicker">Contacto comercial</p>
@@ -142,7 +165,7 @@ export default function Interaction() {
                   href={`https://wa.me/57${channel.whatsapp}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="primary-button"
+                  className="btn portal-btn portal-btn-primary"
                 >
                   Contactar por WhatsApp
                 </a>
@@ -152,7 +175,7 @@ export default function Interaction() {
         </div>
       </section>
 
-      <section className="interaction-section service-section" id="formulario-pqrs">
+      <section className="interaction-section service-section" id="formulario-pqrs" data-reveal="fade-up">
         <div className="container-xxl">
           <div className="section-heading mb-4">
             <p className="section-kicker">Sistema PQRS</p>
@@ -165,6 +188,7 @@ export default function Interaction() {
               <div className="service-form-grid">
                 <input
                   type="text"
+                  className="form-control"
                   placeholder="Nombre completo"
                   value={form.nombre}
                   onChange={(event) =>
@@ -173,6 +197,7 @@ export default function Interaction() {
                 />
                 <input
                   type="email"
+                  className="form-control"
                   placeholder="Correo electronico"
                   value={form.correo}
                   onChange={(event) =>
@@ -181,6 +206,7 @@ export default function Interaction() {
                 />
               </div>
               <select
+                className="form-select"
                 value={form.tipo}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, tipo: event.target.value }))
@@ -195,13 +221,14 @@ export default function Interaction() {
               </select>
               <textarea
                 rows="6"
+                className="form-control"
                 placeholder="Describe tu solicitud con el mayor detalle posible"
                 value={form.mensaje}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, mensaje: event.target.value }))
                 }
               ></textarea>
-              <button type="submit" className="primary-button hero-primary-button">
+              <button type="submit" className="btn portal-btn portal-btn-primary hero-primary-button">
                 Enviar PQRS
               </button>
               {message ? <p className="form-success">{message}</p> : null}

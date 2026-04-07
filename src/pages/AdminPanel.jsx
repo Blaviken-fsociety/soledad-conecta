@@ -98,6 +98,30 @@ export default function AdminPanel() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const elements = Array.from(document.querySelectorAll('[data-reveal]'));
+
+    if (elements.length === 0) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -50px 0px' },
+    );
+
+    elements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, []);
+
   if (sessionRole !== 'admin') {
     return <Navigate to="/login" replace />;
   }
@@ -241,43 +265,58 @@ export default function AdminPanel() {
     : [];
 
   return (
-    <main className="portal admin-page">
-      <header className="portal-header">
-        <BrandLogo />
-        <nav className="header-actions" aria-label="Navegacion administrativa">
-          <button type="button" className="logout-button" onClick={() => { clearSession(); navigate('/'); }}>
-            Logout
-          </button>
-        </nav>
+    <main className="portal portal-service-page portal-dashboard-page admin-page">
+      <header className="portal-header portal-home-header portal-home-toolbar dashboard-header">
+        <div className="container-xxl">
+          <div className="navbar-shell home-toolbar-shell">
+            <div className="navbar-brand-slot">
+              <BrandLogo />
+            </div>
+
+            <div className="navbar-actions-slot">
+              <nav className="header-actions service-header-actions home-toolbar-actions dashboard-header-actions" aria-label="Navegacion administrativa">
+                <button type="button" className="btn portal-btn portal-btn-dark logout-button" onClick={() => { clearSession(); navigate('/'); }}>
+                  Cierre de sesion
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <section className="admin-hero">
-        <div className="hero-copy">
-          <span className="eyebrow">Panel Administrador</span>
-          <h1>Gestion institucional del sistema</h1>
-          <p className="hero-text">
-            Desde aqui el administrador valida postulaciones, asigna contrasenas,
-            administra usuarios y aprueba contenido antes de publicarlo.
-          </p>
-        </div>
+      <section className="service-hero-section dashboard-hero-section" data-reveal="fade-up">
+        <div className="container-xxl">
+          <div className="admin-hero dashboard-hero-grid">
+            <div className="hero-copy dashboard-hero-copy">
+              <h1>Gestion institucional del sistema con una interfaz mas clara y ordenada.</h1>
+              <p className="hero-text">
+                Desde aqui el administrador valida postulaciones, asigna contrasenas,
+                administra usuarios y aprueba contenido antes de publicarlo.
+              </p>
+            </div>
 
-        <aside className="hero-panel">
-          <h2>Acceso seguro</h2>
-          <p>Sesion activa: <strong>{session?.user?.nombre}</strong></p>
-          <p>Los datos personales privados solo son visibles en este panel.</p>
-        </aside>
+            <aside className="hero-panel dashboard-hero-panel">
+              <h2>Acceso seguro</h2>
+              <p>Sesion activa: <strong>{session?.user?.nombre}</strong></p>
+              <p>Los datos personales privados solo son visibles en este panel.</p>
+            </aside>
+          </div>
+        </div>
       </section>
 
-      {formMessage ? <p className="form-success">{formMessage}</p> : null}
-      {formError ? <p className="login-error">{formError}</p> : null}
+      <div className="container-xxl dashboard-feedback-stack">
+        {formMessage ? <p className="form-success">{formMessage}</p> : null}
+        {formError ? <p className="login-error">{formError}</p> : null}
+      </div>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Solicitudes</p>
-          <h2>Postulaciones de nuevos emprendedores</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-up">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Solicitudes</p>
+            <h2>Postulaciones de nuevos emprendedores</h2>
+          </div>
 
-        <div className="users-table-card">
+          <div className="users-table-card dashboard-card">
           <table className="users-table">
             <thead>
               <tr>
@@ -301,8 +340,10 @@ export default function AdminPanel() {
                     <td>{user.correo}</td>
                     <td>{user.estadoRevision}</td>
                     <td>
-                      <button type="button" className="secondary-button" onClick={() => setUserForm({ ...emptyUserForm, ...user, password: '' })}>Preparar aprobacion</button>
-                      <button type="button" className="secondary-button" onClick={() => handleDeleteUser(user.id)}>Eliminar</button>
+                      <div className="table-actions-stack">
+                        <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => setUserForm({ ...emptyUserForm, ...user, password: '' })}>Preparar aprobacion</button>
+                        <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleDeleteUser(user.id)}>Eliminar</button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -311,102 +352,110 @@ export default function AdminPanel() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Modulo 2</p>
-          <h2>CRUD de usuarios</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-left">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Gestion de usuarios</p>
+            <h2>Crear, aprobar y actualizar perfiles del sistema</h2>
+          </div>
 
-        <div className="admin-user-layout">
-          <form className="admin-user-form" onSubmit={handleSaveUser}>
+          <div className="admin-user-layout dashboard-split-layout">
+          <form className="admin-user-form dashboard-form-card" onSubmit={handleSaveUser}>
             <div className="section-heading">
               <p className="section-kicker">{userForm.id ? 'Edicion' : 'Registro'}</p>
               <h3>{userForm.id ? 'Editar o aprobar usuario' : 'Crear nuevo usuario'}</h3>
             </div>
 
-            <input type="text" placeholder="Nombre completo" value={userForm.nombre} onChange={(event) => setUserForm((current) => ({ ...current, nombre: event.target.value }))} />
+            <input className="form-control" type="text" placeholder="Nombre completo" value={userForm.nombre} onChange={(event) => setUserForm((current) => ({ ...current, nombre: event.target.value }))} />
             <div className="service-form-grid">
-              <select value={userForm.tipoDocumento} onChange={(event) => setUserForm((current) => ({ ...current, tipoDocumento: event.target.value }))}>
+              <select className="form-select" value={userForm.tipoDocumento} onChange={(event) => setUserForm((current) => ({ ...current, tipoDocumento: event.target.value }))}>
                 <option value="">Tipo de documento</option>
                 <option value="CC">Cedula</option>
                 <option value="TI">Tarjeta de identidad</option>
                 <option value="CE">Cedula de extranjeria</option>
                 <option value="PAS">Pasaporte</option>
               </select>
-              <input type="text" placeholder="Numero de documento" value={userForm.numeroDocumento} onChange={(event) => setUserForm((current) => ({ ...current, numeroDocumento: event.target.value }))} />
+              <input className="form-control" type="text" placeholder="Numero de documento" value={userForm.numeroDocumento} onChange={(event) => setUserForm((current) => ({ ...current, numeroDocumento: event.target.value }))} />
             </div>
-            <input type="text" placeholder="Direccion" value={userForm.direccion} onChange={(event) => setUserForm((current) => ({ ...current, direccion: event.target.value }))} />
-            <input type="text" placeholder="Telefono" value={userForm.telefono} onChange={(event) => setUserForm((current) => ({ ...current, telefono: event.target.value }))} />
-            <input type="email" placeholder="Correo del usuario" value={userForm.correo} onChange={(event) => setUserForm((current) => ({ ...current, correo: event.target.value }))} />
-            <input type="password" placeholder={userForm.id ? 'Nueva contrasena opcional' : 'Contrasena opcional'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} />
-            <select value={userForm.rol} onChange={(event) => setUserForm((current) => ({ ...current, rol: event.target.value }))}>
+            <input className="form-control" type="text" placeholder="Direccion" value={userForm.direccion} onChange={(event) => setUserForm((current) => ({ ...current, direccion: event.target.value }))} />
+            <input className="form-control" type="text" placeholder="Telefono" value={userForm.telefono} onChange={(event) => setUserForm((current) => ({ ...current, telefono: event.target.value }))} />
+            <input className="form-control" type="email" placeholder="Correo del usuario" value={userForm.correo} onChange={(event) => setUserForm((current) => ({ ...current, correo: event.target.value }))} />
+            <input className="form-control" type="password" placeholder={userForm.id ? 'Nueva contrasena opcional' : 'Contrasena opcional'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} />
+            <select className="form-select" value={userForm.rol} onChange={(event) => setUserForm((current) => ({ ...current, rol: event.target.value }))}>
               <option value="entrepreneur">Emprendedor</option>
               <option value="admin">Administrador</option>
             </select>
-            <select value={userForm.estadoRevision} onChange={(event) => setUserForm((current) => ({ ...current, estadoRevision: event.target.value }))}>
+            <select className="form-select" value={userForm.estadoRevision} onChange={(event) => setUserForm((current) => ({ ...current, estadoRevision: event.target.value }))}>
               <option value="APROBADO">Aprobado</option>
               <option value="PENDIENTE">Pendiente</option>
               <option value="RECHAZADO">Rechazado</option>
             </select>
-            <button type="submit" className="primary-button">
+            <button type="submit" className="btn portal-btn portal-btn-primary">
               {userForm.id ? 'Guardar cambios' : 'Crear usuario'}
             </button>
             {userForm.id && userForm.rol === 'entrepreneur' ? (
-              <button type="button" className="secondary-button" onClick={() => handleApproveApplicant(userForm)}>
+              <button type="button" className="btn portal-btn portal-btn-secondary" onClick={() => handleApproveApplicant(userForm)}>
                 Aprobar con contrasena
               </button>
             ) : null}
           </form>
 
-          <div className="users-table-card">
+          <div className="users-table-card dashboard-card users-table-card-fill">
             <div className="table-card-header"><h3>Usuarios registrados</h3></div>
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Documento</th>
-                  <th>Correo</th>
-                  <th>Rol</th>
-                  <th>Revision</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr><td colSpan="6">Cargando usuarios...</td></tr>
-                ) : users.length > 0 ? (
-                  users.map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.nombre}</td>
-                      <td>{user.tipoDocumento} {user.numeroDocumento}</td>
-                      <td>{user.correo}</td>
-                      <td>{user.rol === 'admin' ? 'Administrador' : 'Emprendedor'}</td>
-                      <td>{user.estadoRevision}</td>
-                      <td>
-                        <button type="button" className="secondary-button" onClick={() => setUserForm({ ...emptyUserForm, ...user, password: '' })}>Editar</button>
-                        <button type="button" className="secondary-button" onClick={() => handleDeleteUser(user.id)}>Eliminar</button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr><td colSpan="6">No hay usuarios registrados todavia.</td></tr>
-                )}
-              </tbody>
-            </table>
+            <div className="users-table-scroll users-table-scroll-panel" aria-label="Desplazamiento de usuarios registrados">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Documento</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Revision</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr><td colSpan="6">Cargando usuarios...</td></tr>
+                  ) : users.length > 0 ? (
+                    users.map((user) => (
+                      <tr key={user.id}>
+                        <td>{user.nombre}</td>
+                        <td>{user.tipoDocumento} {user.numeroDocumento}</td>
+                        <td>{user.correo}</td>
+                        <td>{user.rol === 'admin' ? 'Administrador' : 'Emprendedor'}</td>
+                        <td>{user.estadoRevision}</td>
+                        <td>
+                          <div className="table-actions-stack">
+                            <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => setUserForm({ ...emptyUserForm, ...user, password: '' })}>Editar</button>
+                            <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleDeleteUser(user.id)}>Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="6">No hay usuarios registrados todavia.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+        </div>
         </div>
       </section>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Validaciones</p>
-          <h2>Solicitudes de microtiendas y productos</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-up">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Validaciones</p>
+            <h2>Solicitudes de microtiendas y productos</h2>
+          </div>
 
-        <div className="users-table-card">
+        <div className="users-table-card dashboard-card stacked-table-card">
           <div className="table-card-header"><h3>Microtiendas pendientes</h3></div>
           <table className="users-table">
             <thead>
@@ -428,8 +477,10 @@ export default function AdminPanel() {
                   <td>{item.categoria}</td>
                   <td>{item.estadoRevision}</td>
                   <td>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewMicrotiendaRequest, item.id, 'APROBADO')}>Aprobar</button>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewMicrotiendaRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    <div className="table-actions-stack">
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewMicrotiendaRequest, item.id, 'APROBADO')}>Aprobar</button>
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewMicrotiendaRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    </div>
                   </td>
                 </tr>
               )) : <tr><td colSpan="6">No hay microtiendas pendientes.</td></tr>}
@@ -437,7 +488,7 @@ export default function AdminPanel() {
           </table>
         </div>
 
-        <div className="users-table-card">
+        <div className="users-table-card dashboard-card stacked-table-card">
           <div className="table-card-header"><h3>Productos pendientes</h3></div>
           <table className="users-table">
             <thead>
@@ -461,23 +512,27 @@ export default function AdminPanel() {
                   <td>{item.categoria}</td>
                   <td>{item.estadoRevision}</td>
                   <td>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewProductRequest, item.id, 'APROBADO')}>Aprobar</button>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewProductRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    <div className="table-actions-stack">
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewProductRequest, item.id, 'APROBADO')}>Aprobar</button>
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewProductRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    </div>
                   </td>
                 </tr>
               )) : <tr><td colSpan="7">No hay productos pendientes.</td></tr>}
             </tbody>
           </table>
         </div>
+        </div>
       </section>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Calificaciones</p>
-          <h2>Revision con datos personales privados</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-left">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Calificaciones</p>
+            <h2>Revision con datos personales privados</h2>
+          </div>
 
-        <div className="users-table-card">
+        <div className="users-table-card dashboard-card">
           <table className="users-table">
             <thead>
               <tr>
@@ -502,78 +557,88 @@ export default function AdminPanel() {
                   <td>{item.puntuacion}</td>
                   <td>{item.estadoRevision}</td>
                   <td>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewRatingRequest, item.id, 'APROBADO')}>Aprobar</button>
-                    <button type="button" className="secondary-button" onClick={() => handleReview(reviewRatingRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    <div className="table-actions-stack">
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewRatingRequest, item.id, 'APROBADO')}>Aprobar</button>
+                      <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleReview(reviewRatingRequest, item.id, 'RECHAZADO')}>Rechazar</button>
+                    </div>
                   </td>
                 </tr>
               )) : <tr><td colSpan="8">No hay calificaciones pendientes.</td></tr>}
             </tbody>
           </table>
         </div>
+        </div>
       </section>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Modulo 4</p>
-          <h2>Categorias del sistema</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-up">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Categorias</p>
+            <h2>Gestiona la estructura base del portal</h2>
+          </div>
 
-        <div className="admin-user-layout">
-          <form className="admin-user-form" onSubmit={handleSaveCategory}>
+        <div className="admin-user-layout dashboard-split-layout">
+          <form className="admin-user-form dashboard-form-card" onSubmit={handleSaveCategory}>
             <div className="section-heading">
               <p className="section-kicker">{categoryForm.id ? 'Edicion' : 'Registro'}</p>
               <h3>{categoryForm.id ? 'Editar categoria' : 'Crear categoria'}</h3>
             </div>
 
-            <input type="text" placeholder="Nombre de la categoria" value={categoryForm.nombre} onChange={(event) => setCategoryForm((current) => ({ ...current, nombre: event.target.value }))} />
-            <textarea rows="4" placeholder="Descripcion" value={categoryForm.descripcion} onChange={(event) => setCategoryForm((current) => ({ ...current, descripcion: event.target.value }))}></textarea>
-            <select value={categoryForm.estado ? 'activo' : 'inactivo'} onChange={(event) => setCategoryForm((current) => ({ ...current, estado: event.target.value === 'activo' }))}>
+            <input className="form-control" type="text" placeholder="Nombre de la categoria" value={categoryForm.nombre} onChange={(event) => setCategoryForm((current) => ({ ...current, nombre: event.target.value }))} />
+            <textarea className="form-control" rows="4" placeholder="Descripcion" value={categoryForm.descripcion} onChange={(event) => setCategoryForm((current) => ({ ...current, descripcion: event.target.value }))}></textarea>
+            <select className="form-select" value={categoryForm.estado ? 'activo' : 'inactivo'} onChange={(event) => setCategoryForm((current) => ({ ...current, estado: event.target.value === 'activo' }))}>
               <option value="activo">Activa</option>
               <option value="inactivo">Inactiva</option>
             </select>
-            <button type="submit" className="primary-button">
+            <button type="submit" className="btn portal-btn portal-btn-primary">
               {categoryForm.id ? 'Actualizar categoria' : 'Crear categoria'}
             </button>
           </form>
 
-          <div className="users-table-card">
+          <div className="users-table-card dashboard-card users-table-card-fill">
             <div className="table-card-header"><h3>Categorias registradas</h3></div>
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Microtiendas</th>
-                  <th>Productos</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((category) => (
-                  <tr key={category.id}>
-                    <td>{category.nombre}</td>
-                    <td>{category.estado ? 'Activa' : 'Inactiva'}</td>
-                    <td>{category.totalMicrotiendas}</td>
-                    <td>{category.totalProductos}</td>
-                    <td>
-                      <button type="button" className="secondary-button" onClick={() => setCategoryForm(category)}>Editar</button>
-                      <button type="button" className="secondary-button" onClick={() => handleDeleteCategory(category.id)}>Eliminar</button>
-                    </td>
+            <div className="users-table-scroll users-table-scroll-panel" aria-label="Desplazamiento de categorias registradas">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Microtiendas</th>
+                    <th>Productos</th>
+                    <th>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {categories.map((category) => (
+                    <tr key={category.id}>
+                      <td>{category.nombre}</td>
+                      <td>{category.estado ? 'Activa' : 'Inactiva'}</td>
+                      <td>{category.totalMicrotiendas}</td>
+                      <td>{category.totalProductos}</td>
+                      <td>
+                        <div className="table-actions-stack">
+                          <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => setCategoryForm(category)}>Editar</button>
+                          <button type="button" className="btn portal-btn portal-btn-secondary table-action-btn" onClick={() => handleDeleteCategory(category.id)}>Eliminar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+      </div>
+      </div>
       </section>
 
-      <section className="metrics-section">
-        <div className="section-heading">
-          <p className="section-kicker">Modulo 5</p>
-          <h2>Panel de Metricas Institucionales</h2>
-        </div>
+      <section className="metrics-section service-section dashboard-section" data-reveal="fade-up">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Metricas institucionales</p>
+            <h2>Resumen operativo del portal</h2>
+          </div>
 
-        <div className="metrics-grid">
+          <div className="metrics-grid">
           {metricsCards.map((metric) => (
             <article key={metric.label} className="metric-card">
               <p className="metric-label">{metric.label}</p>
@@ -581,16 +646,18 @@ export default function AdminPanel() {
               <p>{metric.detail}</p>
             </article>
           ))}
+          </div>
         </div>
       </section>
 
-      <section className="users-section">
-        <div className="section-heading">
-          <p className="section-kicker">Modulo 6</p>
-          <h2>Solicitudes PQRS</h2>
-        </div>
+      <section className="users-section service-section dashboard-section" data-reveal="fade-left">
+        <div className="container-xxl">
+          <div className="section-heading">
+            <p className="section-kicker">Solicitudes PQRS</p>
+            <h2>Mensajes institucionales recibidos</h2>
+          </div>
 
-        <div className="users-table-card">
+          <div className="users-table-card dashboard-card">
           <table className="users-table">
             <thead>
               <tr>
@@ -617,6 +684,7 @@ export default function AdminPanel() {
               )}
             </tbody>
           </table>
+        </div>
         </div>
       </section>
 
