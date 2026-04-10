@@ -2,7 +2,7 @@
 
 Despliegue en linea:
 
-- [Soledad Conecta en Netlify](https://69c2d0792f6d23c178e284af--soledad-conecta.netlify.app/)
+- [Soledad Conecta en Netlify]([https://69c2d0792f6d23c178e284af--soledad-conecta.netlify.app/](https://soledad-conecta.netlify.app/))
 
 Soledad Conecta es una vitrina digital para emprendimientos locales. El proyecto combina un frontend en React + Vite con un backend en Express, e integra autenticacion, postulacion de emprendedores, gestion administrativa, microtiendas, productos, PQRS, calificaciones y metricas.
 
