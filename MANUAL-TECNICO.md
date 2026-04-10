@@ -4,7 +4,7 @@
 
 Despliegue:
 
-- [Soledad Conecta en Netlify](https://69c2d0792f6d23c178e284af--soledad-conecta.netlify.app/)
+- [Soledad Conecta en Netlify](https://soledad-conecta.netlify.app/)
 
 Soledad Conecta es una plataforma full stack orientada a la promocion de emprendimientos locales mediante una vitrina empresarial digital. El proyecto evoluciono desde una base cliente-servidor con MySQL planificado hacia una version demostrativa funcional con frontend en React + Vite y backend en Node.js + Express con persistencia en JSON.
 
