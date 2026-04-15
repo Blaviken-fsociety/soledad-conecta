@@ -28,6 +28,7 @@ const buildMicrotienda = (microtienda, data) => {
     propietario: usuario?.nombre || null,
     logo_imagen: microtienda.logo_imagen || '',
     total_productos: productos.length,
+    total_calificaciones: calificaciones.length,
     promedio_calificacion: Number(promedio.toFixed(1)),
   };
 };

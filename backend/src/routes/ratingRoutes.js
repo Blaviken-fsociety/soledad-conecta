@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import {
   createRating,
+  deleteRating,
   getRatings,
   getRatingsForReview,
   getRatingSummary,
@@ -16,5 +17,6 @@ router.get('/revision/lista', requireAuth, requireRole('admin'), getRatingsForRe
 router.get('/', getRatings);
 router.post('/', createRating);
 router.patch('/:id/revision', requireAuth, requireRole('admin'), reviewRating);
+router.delete('/:id', requireAuth, requireRole('admin'), deleteRating);
 
 export default router;

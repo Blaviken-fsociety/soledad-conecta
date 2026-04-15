@@ -43,3 +43,13 @@ export const getEntrepreneurDashboardMetricsService = async (userId) => {
     totalCalificaciones: Number(metrics?.total_calificaciones || 0),
   };
 };
+
+export const getPublicMetricsService = async () => {
+  const summary = await getAdminMetrics();
+
+  return {
+    totalEmprendedores: Number(summary?.total_emprendedores || 0),
+    microtiendasActivas: Number(summary?.microtiendas_activas || 0),
+    tasaSatisfaccion: Number(summary?.tasa_satisfaccion || 0),
+  };
+};
