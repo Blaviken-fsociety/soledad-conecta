@@ -26,6 +26,7 @@ const sanitizeMicrotienda = (microtienda) => ({
   propietarioId: microtienda.id_usuario,
   propietario: microtienda.propietario || '',
   totalProductos: Number(microtienda.total_productos || 0),
+  totalCalificaciones: Number(microtienda.total_calificaciones || 0),
   promedioCalificacion: Number(microtienda.promedio_calificacion || 0),
 });
 

@@ -1,5 +1,6 @@
 import {
   createRatingService,
+  deleteRatingService,
   getRatingsService,
   getRatingSummaryService,
   reviewRatingService,
@@ -72,6 +73,19 @@ export const reviewRating = async (request, response, next) => {
     response.status(200).json({
       success: true,
       data: rating,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRating = async (request, response, next) => {
+  try {
+    const result = await deleteRatingService(request.params.id);
+
+    response.status(200).json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     next(error);

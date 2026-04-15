@@ -3,6 +3,12 @@ import { readData } from '../utils/jsonDb.js';
 export const getAdminMetrics = async () => {
   const data = await readData();
   const entrepreneurRole = data.roles.find((item) => item.nombre === 'EMPRENDEDOR');
+  const approvedRatings = data.calificaciones.filter((item) => item.estado_revision === 'APROBADO');
+  const positiveRatings = approvedRatings.filter((item) => Number(item.puntuacion) >= 4);
+  const satisfactionRate =
+    approvedRatings.length > 0
+      ? Math.round((positiveRatings.length / approvedRatings.length) * 100)
+      : 0;
 
   return {
     total_usuarios: data.usuarios.length,
@@ -12,7 +18,8 @@ export const getAdminMetrics = async () => {
     microtiendas_activas: data.microtiendas.filter((item) => item.estado && item.estado_revision === 'APROBADO').length,
     productos_activos: data.productos.filter((item) => item.estado && item.estado_revision === 'APROBADO').length,
     total_pqrs: data.pqrs.length,
-    total_calificaciones: data.calificaciones.filter((item) => item.estado_revision === 'APROBADO').length,
+    total_calificaciones: approvedRatings.length,
+    tasa_satisfaccion: satisfactionRate,
     microtiendas_pendientes: data.microtiendas.filter((item) => item.estado_revision === 'PENDIENTE').length,
     productos_pendientes: data.productos.filter((item) => item.estado_revision === 'PENDIENTE').length,
     calificaciones_pendientes: data.calificaciones.filter((item) => item.estado_revision === 'PENDIENTE').length,

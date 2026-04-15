@@ -87,6 +87,22 @@
       "estado_revision": "APROBADO",
       "fecha_creacion": "2026-04-06T05:53:18.975Z",
       "id_rol": 2
+    },
+    {
+      "id_usuario": 6,
+      "nombre": "Daniel Padilla",
+      "tipo_documento": "CC",
+      "numero_documento": "1235455",
+      "direccion": "Calle 39 #21-34",
+      "telefono": "3123241254",
+      "correo": "emprendedor2@demo.com",
+      "password": "123456",
+      "must_change_password": false,
+      "password_changed_by_user": true,
+      "estado": true,
+      "estado_revision": "APROBADO",
+      "fecha_creacion": "2026-04-10T20:23:09.730Z",
+      "id_rol": 2
     }
   ],
   "categorias": [
@@ -187,6 +203,21 @@
       "fecha_creacion": "2026-04-06T06:11:20.556Z",
       "id_usuario": 5,
       "id_categoria": 6
+    },
+    {
+      "id_microtienda": 6,
+      "nombre": "Lentes Daniel",
+      "descripcion": "Tienda de lentes",
+      "sector_economico": "2",
+      "whatsapp": "3001995672",
+      "redes_sociales": "@lentsdani",
+      "logo_imagen": "",
+      "estado": true,
+      "estado_revision": "APROBADO",
+      "observacion_revision": "",
+      "fecha_creacion": "2026-04-10T20:28:06.009Z",
+      "id_usuario": 6,
+      "id_categoria": 2
     }
   ],
   "productos": [
@@ -226,11 +257,25 @@
       "stock": 123,
       "imagen_url": "",
       "estado": true,
-      "estado_revision": "PENDIENTE",
+      "estado_revision": "APROBADO",
       "observacion_revision": "",
       "fecha_creacion": "2026-04-07T01:35:42.427Z",
       "id_microtienda": 5,
       "id_categoria": 4
+    },
+    {
+      "id_producto": 6,
+      "nombre": "Lentes",
+      "descripcion": "si",
+      "precio": 70000,
+      "stock": 3,
+      "imagen_url": "",
+      "estado": true,
+      "estado_revision": "APROBADO",
+      "observacion_revision": "",
+      "fecha_creacion": "2026-04-10T20:32:54.073Z",
+      "id_microtienda": 6,
+      "id_categoria": 2
     }
   ],
   "calificaciones": [
@@ -247,6 +292,20 @@
       "estado_revision": "APROBADO",
       "id_producto": null,
       "id_microtienda": 2
+    },
+    {
+      "id_calificacion": 2,
+      "puntuacion": 5,
+      "comentario": "Trato excelente, vayan",
+      "nombre_visitante": "Kevin Parra",
+      "tipo_documento": "CC",
+      "numero_documento": "10002431",
+      "direccion": "2193u90124",
+      "telefono": "3004156802",
+      "fecha": "2026-04-15T05:04:36.613Z",
+      "estado_revision": "APROBADO",
+      "id_producto": null,
+      "id_microtienda": 5
     }
   ],
   "pqrs": [
@@ -257,7 +316,18 @@
       "correo": "orozcoleonard9@gmail.com",
       "mensaje": "quiero que hayan mas pedidos",
       "fecha": "2026-04-04T06:20:13.000Z",
-      "estado": "PENDIENTE"
+      "estado": "EN_PROCESO"
+    },
+    {
+      "id_pqrs": 2,
+      "tipo": "PETICION",
+      "nombre": "JUAN CONDE",
+      "correo": "itzjuan1209@gmail.com",
+      "telefono": "+57 3008595567",
+      "asunto": "información negocio de wilson",
+      "mensaje": "quisiera saber a que hora atiende el negocio de wilson",
+      "fecha": "2026-04-15T00:34:39.970Z",
+      "estado": "EN_PROCESO"
     }
   ],
   "metricas": []

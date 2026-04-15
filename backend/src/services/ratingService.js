@@ -2,7 +2,9 @@ import { findMicrotiendaById } from '../models/microtiendaModel.js';
 import { findProductById } from '../models/productModel.js';
 import {
   createRating,
+  deleteRating,
   findRatings,
+  findRatingById,
   findRatingSummaryByMicrotienda,
   updateRatingReviewStatus,
 } from '../models/ratingModel.js';
@@ -64,8 +66,8 @@ export const createRatingService = async ({
     throw buildHttpError('Nombre y comentario son obligatorios', 400);
   }
 
-  if (!tipoDocumento?.trim() || !numeroDocumento?.trim() || !direccion?.trim() || !telefono?.trim()) {
-    throw buildHttpError('Todos los datos personales son obligatorios', 400);
+  if (!tipoDocumento?.trim() || !numeroDocumento?.trim() || !telefono?.trim()) {
+    throw buildHttpError('Tipo de documento, número de documento y teléfono son obligatorios', 400);
   }
 
   if (!Number.isInteger(numericScore) || numericScore < 1 || numericScore > 5) {
@@ -101,7 +103,7 @@ export const createRatingService = async ({
     nombreVisitante: nombreVisitante.trim(),
     tipoDocumento: tipoDocumento.trim(),
     numeroDocumento: numeroDocumento.trim(),
-    direccion: direccion.trim(),
+    direccion: direccion?.trim() || '',
     telefono: telefono.trim(),
     estadoRevision: 'PENDIENTE',
     idProducto: resolvedProductId || null,
@@ -123,4 +125,16 @@ export const reviewRatingService = async (id, { estadoRevision }) => {
   }
 
   return sanitizeRating(rating, { includePrivate: true });
+};
+
+export const deleteRatingService = async (id) => {
+  const numericId = Number(id);
+  const rating = await findRatingById(numericId);
+
+  if (!rating) {
+    throw buildHttpError('Calificación no encontrada', 404);
+  }
+
+  await deleteRating(numericId);
+  return { deleted: true };
 };

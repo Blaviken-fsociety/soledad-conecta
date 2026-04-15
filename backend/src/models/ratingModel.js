@@ -108,3 +108,10 @@ export const updateRatingReviewStatus = async (id, estadoRevision) => {
 
   return findRatingById(id);
 };
+
+export const deleteRating = async (id) => {
+  await updateData(async (data) => {
+    data.calificaciones = data.calificaciones.filter((item) => item.id_calificacion !== id);
+    return data;
+  });
+};
