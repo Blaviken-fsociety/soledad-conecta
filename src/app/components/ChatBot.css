@@ -1,6 +1,6 @@
 .chatbot-header {
-  background: #06224a;
-  color: #FFD600;
+  background: #1d294a;
+  color: #ffdd1a;
   padding: 1.5rem 1.2rem 1.2rem 1.5rem;
   border-radius: 16px 16px 0 0;
   display: flex;
@@ -53,7 +53,7 @@
 .header-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #FFD600;
+  color: #ffdd1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -66,9 +66,9 @@
 }
 
 .chatbot-close {
-  background: #223a5e;
+  background: #1d294a;
   border: none;
-  color: #FFD600;
+  color: #ffdd1a;
   font-size: 1.2rem;
   cursor: pointer;
   border-radius: 50%;
@@ -80,8 +80,8 @@
 }
 
 .chatbot-close:hover {
-  background: #FFD600;
-  color: #002147;
+  background: #ffdd1a;
+  color: #1d294a;
 }
 
 /* ===== BOTÓN FLOTANTE ===== */
@@ -91,8 +91,8 @@
   bottom: 2rem;
   width: 60px;
   height: 60px;
-  background: #002147;
-  color: #FFD600;
+  background: #1d294a;
+  color: #ffdd1a;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -143,14 +143,14 @@
 }
 
 .chatbot-msg-bot {
-  background: #002147;
-  color: #FFD600;
+  background: #1d294a;
+  color: #ffdd1a;
   align-self: flex-start;
 }
 
 .chatbot-msg-user {
-  background: #FFD600;
-  color: #002147;
+  background: #ffdd1a;
+  color: #1d294a;
   align-self: flex-end;
 }
 
@@ -171,8 +171,8 @@
 
 .chatbot-faq-btn {
   background: #fff;
-  color: #002147;
-  border: 1.5px solid #002147;
+  color: #1d294a;
+  border: 1.5px solid #1d294a;
   border-radius: 14px;
   padding: 0.25rem 0.7rem;
   font-size: 0.85rem;
@@ -184,7 +184,7 @@
 }
 
 .chatbot-faq-btn:hover {
-  background: #002147;
+  background: #1d294a;
   color: #fff;
 }
 
@@ -206,12 +206,12 @@
 }
 
 .chatbot-input:focus {
-  border-color: #002147;
+  border-color: #1d294a;
 }
 
 .chatbot-send {
-  background: #FFD600;
-  color: #002147;
+  background: #ffdd1a;
+  color: #1d294a;
   border: none;
   border-radius: 8px;
   padding: 0.4rem 0.9rem;
@@ -221,6 +221,6 @@
 }
 
 .chatbot-send:hover {
-  background: #002147;
-  color: #FFD600;
+  background: #1d294a;
+  color: #ffdd1a;
 }

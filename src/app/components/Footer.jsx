@@ -143,7 +143,7 @@ export function Footer() {
                 rel="noopener noreferrer"
                 className={socialLinkClass}
               >
-                <img src={twitterXLogo} alt="X" className="h-9 w-9 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(89%) saturate(2058%) hue-rotate(357deg) brightness(101%) contrast(102%)' }} />
+                <img src={twitterXLogo} alt="X" className="h-9 w-9 object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(90%) sepia(79%) saturate(1267%) hue-rotate(335deg) brightness(104%) contrast(103%)' }} />
               </a>
             </div>
           </div>

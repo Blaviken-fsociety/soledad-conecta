@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Package, Star, Edit, Trash2, Plus, Upload, Eye, DollarSign } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import {
   createMicrotiendaRequest,
@@ -14,6 +14,7 @@ import {
   updateMicrotiendaRequest,
   updateProductRequest,
 } from '../utils/api.js';
+import { clearSession } from '../utils/session.js';
 
 const initialProductForm = {
   nombre: '',
@@ -132,11 +133,12 @@ const validateImageFile = (file) => {
   }
 
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    throw new Error(`La imagen supera el límite de ${MAX_IMAGE_SIZE_MB} MB.`);
+    throw new Error(`La imagen supera el lí­mite de ${MAX_IMAGE_SIZE_MB} MB.`);
   }
 };
 
 export function EntrepreneurDashboard() {
+  const navigate = useNavigate();
   const [showProductForm, setShowProductForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [metrics, setMetrics] = useState(null);
@@ -145,6 +147,7 @@ export function EntrepreneurDashboard() {
   const [categories, setCategories] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
+  const [profileFormError, setProfileFormError] = useState('');
   const [savingProduct, setSavingProduct] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [productForm, setProductForm] = useState(initialProductForm);
@@ -153,6 +156,7 @@ export function EntrepreneurDashboard() {
   const [editProductForm, setEditProductForm] = useState(initialProductForm);
   const [productToDelete, setProductToDelete] = useState(null);
   const [deletingProductId, setDeletingProductId] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [productImageName, setProductImageName] = useState('');
   const [editProductImageName, setEditProductImageName] = useState('');
   const [businessImageName, setBusinessImageName] = useState('');
@@ -298,6 +302,7 @@ export function EntrepreneurDashboard() {
   const handleProfileFormChange = (field) => (event) => {
     const nextValue = field === 'estado' ? event.target.checked : event.target.value;
 
+    setProfileFormError('');
     setProfileForm((current) => ({
       ...current,
       [field]: nextValue,
@@ -323,6 +328,7 @@ export function EntrepreneurDashboard() {
     }
 
     try {
+      setProfileFormError('');
       validateImageFile(file);
       const dataUrl = await readFileAsDataUrl(file);
 
@@ -332,7 +338,7 @@ export function EntrepreneurDashboard() {
       }));
       setBusinessImageName(file.name);
     } catch (error) {
-      setDashboardError(error.message || 'No fue posible cargar la imagen del negocio.');
+      setProfileFormError(error.message || 'No fue posible cargar la imagen del negocio.');
     }
   };
 
@@ -399,6 +405,12 @@ export function EntrepreneurDashboard() {
     setSavingProduct(true);
     setDashboardError('');
 
+    if (!productForm.imagenUrl.trim()) {
+      setDashboardError('Debes cargar una imagen del producto para enviarlo a aprobación.');
+      setSavingProduct(false);
+      return;
+    }
+
     try {
       await createProductRequest({
         nombre: productForm.nombre.trim(),
@@ -414,7 +426,7 @@ export function EntrepreneurDashboard() {
       resetProductForm();
       await loadDashboardData();
     } catch (error) {
-      setDashboardError(error.message || 'No fue posible registrar el producto.');
+      setDashboardError(error.message || 'No fue posible enviar el producto a aprobación.');
     } finally {
       setSavingProduct(false);
     }
@@ -486,6 +498,13 @@ export function EntrepreneurDashboard() {
     event.preventDefault();
     setSavingProfile(true);
     setDashboardError('');
+    setProfileFormError('');
+
+    if (!profileForm.logoImagen.trim()) {
+      setProfileFormError('Debes cargar una imagen del negocio para enviar la solicitud.');
+      setSavingProfile(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -507,7 +526,7 @@ export function EntrepreneurDashboard() {
 
       await loadDashboardData();
     } catch (error) {
-      setDashboardError(error.message || 'No fue posible guardar la informacion del negocio.');
+      setProfileFormError(error.message || 'No fue posible guardar la información del negocio.');
     } finally {
       setSavingProfile(false);
     }
@@ -523,6 +542,11 @@ export function EntrepreneurDashboard() {
     </button>
   );
 
+  const handleConfirmLogout = () => {
+    clearSession();
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen w-full bg-[var(--ivory)]">
       <section className="w-full bg-[var(--primary)] px-6 py-8 text-[var(--primary-foreground)] lg:px-8">
@@ -533,12 +557,13 @@ export function EntrepreneurDashboard() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {businessButton}
-            <Link
-              to="/"
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(true)}
               className="inline-flex items-center justify-center gap-2 rounded-[var(--radius)] border-2 border-[rgba(255,255,255,0.78)] bg-transparent px-6 py-3 text-base font-semibold text-[var(--white)] transition-all duration-200 hover:bg-[rgba(255,255,255,0.08)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.18)]"
             >
-              Volver al portal
-            </Link>
+              Cerrar sesión
+            </button>
           </div>
         </div>
       </section>
@@ -655,7 +680,7 @@ export function EntrepreneurDashboard() {
                       ) : (
                         <tr>
                           <td className={tdClass} colSpan={5}>
-                            Todavía no hay productos registrados en tu catálogo.
+                            Todaví­a no hay productos registrados en tu catálogo.
                           </td>
                         </tr>
                       )}
@@ -684,7 +709,7 @@ export function EntrepreneurDashboard() {
                   </div>
                   <p className="mb-4 text-sm text-[var(--muted-foreground)]">
                     {microtienda
-                      ? microtienda.descripcion || 'Tu negocio ya está conectado al backend y listo para ser gestionado.'
+                      ? microtienda.descripcion || 'Tu negocio ya está¡ conectado al backend y listo para ser gestionado.'
                       : 'Completa el perfil para registrar tu negocio en la plataforma institucional.'}
                   </p>
                   <button className={`${smallOutlineButtonClass} w-full`} onClick={() => setActiveTab('profile')}>
@@ -728,7 +753,7 @@ export function EntrepreneurDashboard() {
                     <div>
                       <label className={labelClass}>Categoria *</label>
                       <select className={inputClass} value={productForm.idCategoria} onChange={handleProductFormChange('idCategoria')} required>
-                        <option value="">Selecciona una categoría</option>
+                        <option value="">Selecciona una categorí­a</option>
                         {categories.map((category) => (
                           <option key={category.id} value={category.id}>
                             {category.nombre}
@@ -749,16 +774,9 @@ export function EntrepreneurDashboard() {
                       <textarea className={`${inputClass} min-h-[120px]`} rows={3} value={productForm.descripcion} onChange={handleProductFormChange('descripcion')} required />
                     </div>
                     <div className="md:col-span-2">
-                      <label className={labelClass}>Imagen del producto</label>
-                      <input
-                        type="url"
-                        className={inputClass}
-                        value={productForm.imagenUrl}
-                        onChange={handleProductFormChange('imagenUrl')}
-                        placeholder="Pega una URL de imagen o adjunta un archivo"
-                      />
+                      <label className={labelClass}>Imagen del producto *</label>
                       <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                        Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                        Carga una imagen obligatoria de hasta {MAX_IMAGE_SIZE_MB} MB. Puedes arrastrarla o elegirla desde tu equipo.
                       </p>
                       <div
                         className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
@@ -767,7 +785,7 @@ export function EntrepreneurDashboard() {
                       >
                         <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-3" />
                         <p className="mb-3 text-sm text-[var(--muted-foreground)]">
-                          Arrastra una imagen aquí o selecciona un archivo desde tu equipo.
+                          Arrastra una imagen aquí­ o selecciona un archivo desde tu equipo.
                         </p>
                         <label className={smallOutlineButtonClass} htmlFor="create-product-image-input">
                           Elegir archivo
@@ -788,12 +806,12 @@ export function EntrepreneurDashboard() {
                     </div>
                     <label className="flex items-center gap-3 text-sm font-semibold text-[var(--foreground)] md:col-span-2">
                       <input type="checkbox" checked={productForm.estado} onChange={handleProductFormChange('estado')} />
-                      Producto visible cuando sea aprobado
+                      El producto quedarÃ¡ pendiente de revisión administrativa antes de publicarse
                     </label>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <button type="submit" className={accentButtonClass} disabled={savingProduct}>
-                      {savingProduct ? 'Guardando...' : 'Guardar producto'}
+                      {savingProduct ? 'Enviando...' : 'Enviar a aprobación'}
                     </button>
                     <button
                       type="button"
@@ -846,7 +864,7 @@ export function EntrepreneurDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className={tdClass}>{product.categoria || 'Sin categoría'}</td>
+                          <td className={tdClass}>{product.categoria || 'Sin categorí­a'}</td>
                           <td className={tdClass}>{formatPrice(product.precio)}</td>
                           <td className={tdClass}>{product.stock}</td>
                           <td className={tdClass}>
@@ -880,7 +898,7 @@ export function EntrepreneurDashboard() {
                     ) : (
                       <tr>
                         <td className={tdClass} colSpan={6}>
-                          No hay productos registrados todavía.
+                          No hay productos registrados todaví­a.
                         </td>
                       </tr>
                     )}
@@ -904,7 +922,7 @@ export function EntrepreneurDashboard() {
                   <div>
                     <label className={labelClass}>Categoria *</label>
                     <select className={inputClass} value={profileForm.idCategoria} onChange={handleProfileFormChange('idCategoria')} required>
-                      <option value="">Selecciona una categoría</option>
+                      <option value="">Selecciona una categorí­a</option>
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.nombre}
@@ -929,16 +947,9 @@ export function EntrepreneurDashboard() {
                     <input type="text" className={inputClass} value={profileForm.redesSociales} onChange={handleProfileFormChange('redesSociales')} placeholder="Instagram, Facebook o sitio web" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className={labelClass}>Imagen del negocio</label>
-                    <input
-                      type="url"
-                      className={inputClass}
-                      value={profileForm.logoImagen}
-                      onChange={handleProfileFormChange('logoImagen')}
-                      placeholder="Pega una URL de imagen o adjunta un archivo"
-                    />
+                    <label className={labelClass}>Imagen del negocio *</label>
                     <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                      Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                      Carga el logo o una imagen principal del negocio. Este archivo es obligatorio para enviar la solicitud.
                     </p>
                     <div
                       className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
@@ -947,7 +958,7 @@ export function EntrepreneurDashboard() {
                     >
                       <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-2" />
                       <p className="mb-3 text-[var(--muted-foreground)]">
-                        Arrastra el logo o una foto del negocio aquí, o selecciónala desde tu equipo.
+                        Arrastra el logo o una foto del negocio aquí­, o selecciónala desde tu equipo.
                       </p>
                       <label className={smallOutlineButtonClass} htmlFor="business-image-input">
                         Elegir archivo
@@ -971,6 +982,11 @@ export function EntrepreneurDashboard() {
                     Negocio visible cuando sea aprobado
                   </label>
                 </div>
+                {profileFormError ? (
+                  <div className="mt-6 rounded-[var(--radius)] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+                    {profileFormError}
+                  </div>
+                ) : null}
                 <div className="mt-6">
                   <button type="submit" className={accentButtonClass} disabled={savingProfile}>
                     {savingProfile ? 'Guardando...' : microtienda ? 'Guardar cambios' : 'Registrar negocio'}
@@ -1006,7 +1022,7 @@ export function EntrepreneurDashboard() {
                 <div>
                   <label className={labelClass}>Categoria</label>
                   <select className={inputClass} value={editProductForm.idCategoria} onChange={handleEditProductFormChange('idCategoria')} required>
-                    <option value="">Selecciona una categoría</option>
+                    <option value="">Selecciona una categorí­a</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.nombre}
@@ -1034,15 +1050,8 @@ export function EntrepreneurDashboard() {
 
               <div>
                 <label className={labelClass}>Imagen del producto</label>
-                <input
-                  type="url"
-                  className={inputClass}
-                  value={editProductForm.imagenUrl}
-                  onChange={handleEditProductFormChange('imagenUrl')}
-                  placeholder="Pega una URL de imagen o adjunta un archivo"
-                />
                 <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                  Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                  Reemplaza la imagen arrastrando un archivo o seleccionándolo desde tu equipo.
                 </p>
                 <div
                   className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
@@ -1051,7 +1060,7 @@ export function EntrepreneurDashboard() {
                 >
                   <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-3" />
                   <p className="mb-3 text-sm text-[var(--muted-foreground)]">
-                    Arrastra una imagen aquí o elige un archivo para reemplazar la actual.
+                    Arrastra una imagen aquí­ o elige un archivo para reemplazar la actual.
                   </p>
                   <label className={smallOutlineButtonClass} htmlFor="edit-product-image-input">
                     Elegir archivo
@@ -1073,7 +1082,7 @@ export function EntrepreneurDashboard() {
 
               <label className="flex items-center gap-3 text-sm font-semibold text-[var(--foreground)]">
                 <input type="checkbox" checked={editProductForm.estado} onChange={handleEditProductFormChange('estado')} />
-                Producto visible cuando sea aprobado
+                El producto seguirá sujeto a revisión administrativa
               </label>
 
               <div className="flex flex-wrap justify-end gap-3 pt-2">
@@ -1085,6 +1094,27 @@ export function EntrepreneurDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmLogout ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[560px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-4">
+              <h3 className="mb-2">Cerrar sesión</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                ¿Seguro que deseas cerrar sesión y volver al portal?
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 pt-2">
+              <button type="button" className={outlineButtonClass} onClick={() => setConfirmLogout(false)}>
+                Cancelar
+              </button>
+              <button type="button" className={primaryButtonClass} onClick={handleConfirmLogout}>
+                Sí, cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
