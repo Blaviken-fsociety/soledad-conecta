@@ -36,6 +36,9 @@ const initialProfileForm = {
   estado: true,
 };
 
+const MAX_IMAGE_SIZE_MB = 50;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
 const cardClass =
   'rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
 const primaryButtonClass =
@@ -119,6 +122,20 @@ const readFileAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
+const validateImageFile = (file) => {
+  if (!file) {
+    return;
+  }
+
+  if (!file.type?.startsWith('image/')) {
+    throw new Error('Solo puedes adjuntar archivos de imagen.');
+  }
+
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error(`La imagen supera el límite de ${MAX_IMAGE_SIZE_MB} MB.`);
+  }
+};
+
 export function EntrepreneurDashboard() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -138,6 +155,7 @@ export function EntrepreneurDashboard() {
   const [deletingProductId, setDeletingProductId] = useState(null);
   const [productImageName, setProductImageName] = useState('');
   const [editProductImageName, setEditProductImageName] = useState('');
+  const [businessImageName, setBusinessImageName] = useState('');
 
   const loadDashboardData = async () => {
     setDashboardLoading(true);
@@ -167,6 +185,7 @@ export function EntrepreneurDashboard() {
           ? String(microtiendaResponse.categoriaId)
           : fallbackCategoryId,
       });
+      setBusinessImageName('');
       setProductForm((current) => ({
         ...current,
         idCategoria:
@@ -257,6 +276,10 @@ export function EntrepreneurDashboard() {
       ...current,
       [field]: nextValue,
     }));
+
+    if (field === 'imagenUrl') {
+      setProductImageName('');
+    }
   };
 
   const handleEditProductFormChange = (field) => (event) => {
@@ -266,6 +289,10 @@ export function EntrepreneurDashboard() {
       ...current,
       [field]: nextValue,
     }));
+
+    if (field === 'imagenUrl') {
+      setEditProductImageName('');
+    }
   };
 
   const handleProfileFormChange = (field) => (event) => {
@@ -275,6 +302,10 @@ export function EntrepreneurDashboard() {
       ...current,
       [field]: nextValue,
     }));
+
+    if (field === 'logoImagen') {
+      setBusinessImageName('');
+    }
   };
 
   const resetProductForm = () => {
@@ -286,12 +317,32 @@ export function EntrepreneurDashboard() {
     setProductImageName('');
   };
 
+  const applyBusinessImage = async (file) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      validateImageFile(file);
+      const dataUrl = await readFileAsDataUrl(file);
+
+      setProfileForm((current) => ({
+        ...current,
+        logoImagen: dataUrl,
+      }));
+      setBusinessImageName(file.name);
+    } catch (error) {
+      setDashboardError(error.message || 'No fue posible cargar la imagen del negocio.');
+    }
+  };
+
   const applyProductImage = async (file, mode = 'create') => {
     if (!file) {
       return;
     }
 
     try {
+      validateImageFile(file);
       const dataUrl = await readFileAsDataUrl(file);
 
       if (mode === 'edit') {
@@ -319,6 +370,12 @@ export function EntrepreneurDashboard() {
     event.target.value = '';
   };
 
+  const handleBusinessFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    await applyBusinessImage(file);
+    event.target.value = '';
+  };
+
   const handleEditProductFileChange = async (event) => {
     const file = event.target.files?.[0];
     await applyProductImage(file, 'edit');
@@ -329,6 +386,12 @@ export function EntrepreneurDashboard() {
     event.preventDefault();
     const file = event.dataTransfer?.files?.[0];
     await applyProductImage(file, mode);
+  };
+
+  const handleBusinessDrop = async (event) => {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    await applyBusinessImage(file);
   };
 
   const handleCreateProduct = async (event) => {
@@ -687,8 +750,18 @@ export function EntrepreneurDashboard() {
                     </div>
                     <div className="md:col-span-2">
                       <label className={labelClass}>Imagen del producto</label>
+                      <input
+                        type="url"
+                        className={inputClass}
+                        value={productForm.imagenUrl}
+                        onChange={handleProductFormChange('imagenUrl')}
+                        placeholder="Pega una URL de imagen o adjunta un archivo"
+                      />
+                      <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                        Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                      </p>
                       <div
-                        className="rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
+                        className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
                         onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) => handleProductDrop(event, 'create')}
                       >
@@ -856,13 +929,41 @@ export function EntrepreneurDashboard() {
                     <input type="text" className={inputClass} value={profileForm.redesSociales} onChange={handleProfileFormChange('redesSociales')} placeholder="Instagram, Facebook o sitio web" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className={labelClass}>Logo del negocio (URL)</label>
-                    <input type="url" className={inputClass} value={profileForm.logoImagen} onChange={handleProfileFormChange('logoImagen')} placeholder="https://..." />
-                    <div className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] p-6 text-center">
+                    <label className={labelClass}>Imagen del negocio</label>
+                    <input
+                      type="url"
+                      className={inputClass}
+                      value={profileForm.logoImagen}
+                      onChange={handleProfileFormChange('logoImagen')}
+                      placeholder="Pega una URL de imagen o adjunta un archivo"
+                    />
+                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                      Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                    </p>
+                    <div
+                      className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={handleBusinessDrop}
+                    >
                       <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-2" />
-                      <p className="m-0 text-[var(--muted-foreground)]">
-                        Usa una URL de imagen para representar tu negocio dentro del portal.
+                      <p className="mb-3 text-[var(--muted-foreground)]">
+                        Arrastra el logo o una foto del negocio aquí, o selecciónala desde tu equipo.
                       </p>
+                      <label className={smallOutlineButtonClass} htmlFor="business-image-input">
+                        Elegir archivo
+                      </label>
+                      <input
+                        id="business-image-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleBusinessFileChange}
+                      />
+                      {businessImageName || profileForm.logoImagen ? (
+                        <p className="mt-3 text-sm font-semibold text-[var(--primary)]">
+                          {businessImageName || 'Imagen cargada correctamente'}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <label className="flex items-center gap-3 text-sm font-semibold text-[var(--foreground)] md:col-span-2">
@@ -933,8 +1034,18 @@ export function EntrepreneurDashboard() {
 
               <div>
                 <label className={labelClass}>Imagen del producto</label>
+                <input
+                  type="url"
+                  className={inputClass}
+                  value={editProductForm.imagenUrl}
+                  onChange={handleEditProductFormChange('imagenUrl')}
+                  placeholder="Pega una URL de imagen o adjunta un archivo"
+                />
+                <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                  Puedes usar un enlace o subir una imagen de hasta {MAX_IMAGE_SIZE_MB} MB.
+                </p>
                 <div
-                  className="rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
+                  className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => handleProductDrop(event, 'edit')}
                 >
