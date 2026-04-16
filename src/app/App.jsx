@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import { AppRouter } from './AppRouter';
 import soledadLogo from './assets/soledad-logo.png';
-import ChatBot from './components/ChatBot';
 
 function IntroOverlay() {
   return (
@@ -57,7 +56,6 @@ export default function App() {
     <>
       <AnimatePresence>{showIntro ? <IntroOverlay /> : null}</AnimatePresence>
       <AppRouter />
-        <ChatBot />
     </>
   );
 }
