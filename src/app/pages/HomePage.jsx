@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import ChatBot from '../components/ChatBot';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import {
   getCategoriesRequest,
@@ -34,6 +35,7 @@ const categoryDefinitions = [
 const accentButtonClass =
   'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--accent)] px-6 py-3 text-base font-semibold text-[var(--accent-foreground)] transition-all duration-200 hover:-translate-y-px hover:bg-[#E5A600] hover:shadow-[0_4px_12px_rgba(255,184,0,0.3)]';
 const primaryButtonClass =
+      <ChatBot />
   'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--primary)] px-6 py-3 text-base font-semibold text-[var(--primary-foreground)] transition-all duration-200 hover:-translate-y-px hover:bg-[#152E4D] hover:shadow-[0_4px_12px_rgba(27,58,95,0.25)]';
 const outlineButtonClass =
   'inline-flex items-center justify-center rounded-[var(--radius)] border-2 border-[var(--primary)] px-6 py-3 text-base font-semibold text-[var(--primary)] transition-all duration-200 hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] hover:shadow-[0_4px_12px_rgba(27,58,95,0.2)]';
@@ -164,6 +166,7 @@ export function HomePage() {
 
   return (
     <div className="w-full">
+      <ChatBot />
       <section className="relative w-full overflow-hidden bg-[var(--ivory)] px-6 lg:px-8">
         <div className="flex min-h-[600px] w-full flex-col items-center justify-between gap-12 py-12 lg:flex-row lg:gap-16 lg:py-0">
           <div className="w-full max-w-[720px] flex-1 py-5">
