@@ -132,7 +132,7 @@ export function HomePage() {
 
         setFeaturedBusinesses(businesses);
       } catch (error) {
-        console.error('No se pudieron cargar los datos publicos de la home', error);
+        console.error('No se pudieron cargar los datos públicos de la página de inicio', error);
       }
     };
 
@@ -158,7 +158,7 @@ export function HomePage() {
       {
         icon: TrendingUp,
         value: `${publicMetrics.tasaSatisfaccion}%`,
-        label: 'Tasa de Satisfaccion',
+        label: 'Tasa de satisfacción',
       },
     ],
     [publicMetrics],
@@ -303,7 +303,7 @@ export function HomePage() {
           >
             <h2 className="mb-4">Emprendimientos Destacados</h2>
             <p className="text-lg text-[var(--muted-foreground)]">
-              Conoce los negocios mas populares de nuestra comunidad
+              Conoce los negocios más populares de nuestra comunidad
             </p>
           </motion.div>
 
