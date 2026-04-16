@@ -197,9 +197,9 @@ export function BusinessDetailPageReal() {
 
               {products.length === 0 ? (
                 <div className="rounded-[var(--radius)] bg-[var(--secondary)] px-6 py-10 text-center">
-                  <h4 className="mb-3">Esta tienda todavia no tiene productos aprobados</h4>
+                  <h4 className="mb-3">Esta tienda todavía no tiene productos aprobados</h4>
                   <p className="m-0 text-[var(--muted-foreground)]">
-                    Cuando el administrador valide nuevas publicaciones, apareceran aqui.
+                    Cuando el administrador valide nuevas publicaciones, aparecerán aquí.
                   </p>
                 </div>
               ) : (
@@ -264,7 +264,7 @@ export function BusinessDetailPageReal() {
 
               {recentReviews.length === 0 ? (
                 <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-4 text-[var(--muted-foreground)]">
-                  Este negocio todavia no tiene reseñas aprobadas.
+                  Este negocio todavía no tiene reseñas aprobadas.
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -322,7 +322,7 @@ export function BusinessDetailPageReal() {
               <div className="mb-6 flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <Store size={18} color="var(--primary)" />
-                  <span>{business.categoria || 'Categoria general'}</span>
+                  <span>{business.categoria || 'Categoría general'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Settings size={18} color="var(--primary)" />

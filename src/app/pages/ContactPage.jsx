@@ -19,8 +19,8 @@ const requestTypes = [
     type: 'petition',
     backendType: 'PETICION',
     icon: FileText,
-    label: 'Peticion',
-    description: 'Solicitudes de informacion o servicios',
+    label: 'Petición',
+    description: 'Solicitudes de información o servicios',
     color: 'var(--primary)',
   },
   {
@@ -36,7 +36,7 @@ const requestTypes = [
     backendType: 'RECLAMO',
     icon: AlertCircle,
     label: 'Reclamo',
-    description: 'Insatisfaccion frente a un servicio',
+    description: 'Insatisfacción frente a un servicio',
     color: '#F59E0B',
   },
   {
@@ -141,7 +141,7 @@ export function ContactPage() {
           >
             <h1 className="mb-4 text-[var(--white)]">PQR - Peticiones, Quejas y Reclamos</h1>
             <p className="mx-auto max-w-[700px] text-lg text-[rgba(255,255,255,0.9)]">
-              Tu opinion es importante. Envia tu solicitud y el equipo administrador podra revisarla
+              Tu opinión es importante. Envía tu solicitud y el equipo administrador podrá revisarla
               directamente en el panel institucional.
             </p>
           </motion.div>
@@ -194,10 +194,10 @@ export function ContactPage() {
                   </div>
 
                   <div className={cardClass} style={{ backgroundColor: 'var(--secondary)' }}>
-                    <h3 className="mb-4 text-lg">Informacion importante</h3>
+                    <h3 className="mb-4 text-lg">Información importante</h3>
                     <ul className="m-0 list-disc pl-6 leading-[1.8]">
-                      <li>La informacion queda registrada en el panel del administrador.</li>
-                      <li>Recibiras un numero de radicado para hacer seguimiento.</li>
+                      <li>La información queda registrada en el panel del administrador.</li>
+                      <li>Recibirás un número de radicado para hacer seguimiento.</li>
                       <li>El correo y el asunto ayudan a priorizar y responder mejor tu caso.</li>
                       <li>Los campos marcados con (*) son obligatorios.</li>
                     </ul>
@@ -239,13 +239,13 @@ export function ContactPage() {
                             value={formData.name}
                             onChange={handleInputChange}
                             required
-                            placeholder="Juan Perez"
+                            placeholder="Juan Pérez"
                           />
                         </div>
 
                         <div>
                           <label htmlFor="email" className={labelClass}>
-                            Correo electronico *
+                            Correo electrónico *
                           </label>
                           <input
                             type="email"
