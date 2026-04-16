@@ -1,7 +1,7 @@
 ﻿import { Fragment, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Users, Store, MessageSquare, CheckCircle, XCircle, Eye, Award, Pencil, Trash2, Plus } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   createCategoryRequest,
   createUserRequest,
@@ -13,14 +13,17 @@ import {
   getCategoriesRequest,
   getMicrotiendasRequest,
   getPqrsRequest,
+  getProductsRequest,
   getRatingsRequest,
   getUsersRequest,
   reviewMicrotiendaRequest,
+  reviewProductRequest,
   reviewRatingRequest,
   updatePqrsStatusRequest,
   updateCategoryRequest,
   updateUserRequest,
 } from '../utils/api';
+import { clearSession } from '../utils/session.js';
 
 const cardClass =
   'rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
@@ -110,9 +113,11 @@ function Badge({ children, bg = 'var(--accent)', color = 'var(--accent-foregroun
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
   const [microstores, setMicrostores] = useState([]);
+  const [products, setProducts] = useState([]);
   const [pqrsItems, setPqrsItems] = useState([]);
   const [ratings, setRatings] = useState([]);
   const [adminMetrics, setAdminMetrics] = useState(null);
@@ -130,6 +135,9 @@ export function AdminDashboard() {
   const [reviewActionLoading, setReviewActionLoading] = useState('');
   const [expandedPqrsId, setExpandedPqrsId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmReview, setConfirmReview] = useState(null);
+  const [previewProduct, setPreviewProduct] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
@@ -144,10 +152,11 @@ export function AdminDashboard() {
     setUsersError('');
 
     try {
-      const [metricsResponse, usersResponse, microstoresResponse, pqrsResponse, ratingsResponse, categoriesResponse] = await Promise.all([
+      const [metricsResponse, usersResponse, microstoresResponse, productsResponse, pqrsResponse, ratingsResponse, categoriesResponse] = await Promise.all([
         getAdminMetricsRequest(),
         getUsersRequest(),
         getMicrotiendasRequest(true),
+        getProductsRequest(undefined, true),
         getPqrsRequest(),
         getRatingsRequest({ includePending: true, includePrivate: true }),
         getCategoriesRequest(),
@@ -156,6 +165,7 @@ export function AdminDashboard() {
       setAdminMetrics(metricsResponse || null);
       setUsers(Array.isArray(usersResponse) ? usersResponse : []);
       setMicrostores(Array.isArray(microstoresResponse) ? microstoresResponse : []);
+      setProducts(Array.isArray(productsResponse) ? productsResponse : []);
       setPqrsItems(Array.isArray(pqrsResponse) ? pqrsResponse : []);
       setRatings(Array.isArray(ratingsResponse) ? ratingsResponse : []);
       setCategoriesData(Array.isArray(categoriesResponse) ? categoriesResponse : []);
@@ -209,6 +219,11 @@ export function AdminDashboard() {
     [microstores],
   );
 
+  const pendingProducts = useMemo(
+    () => products.filter((product) => product.estadoRevision === 'PENDIENTE'),
+    [products],
+  );
+
   const pendingRatings = useMemo(
     () => ratings.filter((rating) => rating.estadoRevision === 'PENDIENTE'),
     [ratings],
@@ -223,9 +238,10 @@ export function AdminDashboard() {
     () =>
       pendingUsers.length +
       pendingMicrostores.length +
+      pendingProducts.length +
       pendingRatings.length +
       pendingPqrs.length,
-    [pendingUsers.length, pendingMicrostores.length, pendingRatings.length, pendingPqrs.length],
+    [pendingUsers.length, pendingMicrostores.length, pendingProducts.length, pendingRatings.length, pendingPqrs.length],
   );
 
   const approvedRatings = useMemo(
@@ -253,7 +269,7 @@ export function AdminDashboard() {
         icon: Store,
         label: 'Emprendimientos',
         value: (adminMetrics?.resumen?.microtiendasActivas ?? microstores.filter((store) => store.estadoRevision === 'APROBADO').length).toLocaleString('es-CO'),
-        change: `${pendingMicrostores.length} pendientes`,
+        change: `${pendingMicrostores.length + pendingProducts.length} solicitudes pendientes`,
         color: 'var(--accent)',
       },
       {
@@ -271,7 +287,7 @@ export function AdminDashboard() {
         color: '#10B981',
       },
     ],
-    [adminMetrics, averageRating, microstores, pendingMicrostores.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pqrsItems.length, users.length],
+    [adminMetrics, averageRating, microstores, pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pqrsItems.length, users.length],
   );
 
   const recentActivity = useMemo(() => {
@@ -336,11 +352,12 @@ export function AdminDashboard() {
   const actionRequiredItems = useMemo(
     () => [
       ['Microtiendas', pendingMicrostores.length, 'Emprendimientos esperando aprobación'],
+      ['Productos', pendingProducts.length, 'Productos pendientes de revisión'],
       ['Usuarios', pendingUsers.length, 'Solicitudes de emprendedor pendientes'],
       ['Comentarios', pendingRatings.length, 'Reseñas pendientes de moderación'],
       ['PQRs', pendingPqrs.length, 'Solicitudes pendientes de respuesta'],
     ],
-    [pendingMicrostores.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length],
+    [pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length],
   );
 
   const handleReviewMicrostore = async (id, estadoRevision) => {
@@ -355,6 +372,52 @@ export function AdminDashboard() {
     } finally {
       setReviewActionLoading('');
     }
+  };
+
+  const handleReviewProduct = async (id, estadoRevision) => {
+    setReviewActionLoading(`product-${id}-${estadoRevision}`);
+    setUsersError('');
+
+    try {
+      await reviewProductRequest(id, { estadoRevision });
+      await loadDashboardData();
+    } catch (error) {
+      setUsersError(error.message || 'No fue posible actualizar el producto.');
+    } finally {
+      setReviewActionLoading('');
+    }
+  };
+
+  const openReviewConfirmation = ({ type, id, name, estadoRevision }) => {
+    setConfirmReview({
+      type,
+      id,
+      estadoRevision,
+      title: estadoRevision === 'APROBADO' ? 'Aprobar solicitud' : 'Rechazar solicitud',
+      message: `¿Seguro que deseas ${estadoRevision === 'APROBADO' ? 'aprobar' : 'rechazar'} ${name}?`,
+      confirmLabel: estadoRevision === 'APROBADO' ? 'Sí, aprobar' : 'Sí, rechazar',
+    });
+  };
+
+  const handleConfirmReview = async () => {
+    if (!confirmReview) {
+      return;
+    }
+
+    if (confirmReview.type === 'microstore') {
+      await handleReviewMicrostore(confirmReview.id, confirmReview.estadoRevision);
+    }
+
+    if (confirmReview.type === 'product') {
+      await handleReviewProduct(confirmReview.id, confirmReview.estadoRevision);
+    }
+
+    setConfirmReview(null);
+  };
+
+  const handleConfirmLogout = () => {
+    clearSession();
+    navigate('/');
   };
 
   const handleReviewRating = async (id, estadoRevision) => {
@@ -668,12 +731,13 @@ export function AdminDashboard() {
             >
               {totalPendingCount} Pendientes
             </span>
-            <Link
-              to="/"
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(true)}
               className="inline-flex items-center justify-center gap-2 rounded-[var(--radius)] border-2 border-[rgba(255,255,255,0.78)] bg-transparent px-6 py-3 text-base font-semibold text-[var(--white)] transition-all duration-200 hover:bg-[rgba(255,255,255,0.08)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.18)]"
             >
-              Volver al portal
-            </Link>
+              Cerrar sesión
+            </button>
           </div>
         </div>
       </section>
@@ -791,7 +855,7 @@ export function AdminDashboard() {
 
         {activeTab === 'pending' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className={cardClass}>
+            <div className={`${cardClass} mb-6`}>
               <h2 className="mb-6">Emprendimientos Pendientes de Aprobación</h2>
               <div className={tableWrapperClass}>
                 <table className={tableClass}>
@@ -816,7 +880,14 @@ export function AdminDashboard() {
                         <td className={tdClass}>
                           <div className="flex flex-wrap gap-2">
                             <button
-                              onClick={() => handleReviewMicrostore(business.id, 'APROBADO')}
+                              onClick={() =>
+                                openReviewConfirmation({
+                                  type: 'microstore',
+                                  id: business.id,
+                                  name: `la microtienda ${business.nombre}`,
+                                  estadoRevision: 'APROBADO',
+                                })
+                              }
                               className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-3 py-2 text-sm font-semibold text-[var(--white)]"
                               disabled={reviewActionLoading === `microstore-${business.id}-APROBADO`}
                             >
@@ -824,7 +895,14 @@ export function AdminDashboard() {
                               {reviewActionLoading === `microstore-${business.id}-APROBADO` ? 'Aprobando...' : 'Aprobar'}
                             </button>
                             <button
-                              onClick={() => handleReviewMicrostore(business.id, 'RECHAZADO')}
+                              onClick={() =>
+                                openReviewConfirmation({
+                                  type: 'microstore',
+                                  id: business.id,
+                                  name: `la microtienda ${business.nombre}`,
+                                  estadoRevision: 'RECHAZADO',
+                                })
+                              }
                               className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-3 py-2 text-sm font-semibold text-[var(--white)]"
                               disabled={reviewActionLoading === `microstore-${business.id}-RECHAZADO`}
                             >
@@ -839,7 +917,102 @@ export function AdminDashboard() {
                       <tr>
                         <td className={tdClass} colSpan={6}>
                           <div className="py-6 text-center text-sm text-[var(--muted-foreground)]">
-                            No hay microtiendas pendientes por aprobar.
+                            No hay emprendimientos pendientes por aprobar.
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className={cardClass}>
+              <h2 className="mb-6">Productos Pendientes de Aprobación</h2>
+              <div className={tableWrapperClass}>
+                <table className={tableClass}>
+                  <thead>
+                    <tr>
+                      <th className={thClass}>Producto</th>
+                      <th className={thClass}>Microtienda</th>
+                      <th className={thClass}>Categoría</th>
+                      <th className={thClass}>Precio</th>
+                      <th className={thClass}>Stock</th>
+                      <th className={thClass}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingProducts.length ? pendingProducts.map((product) => (
+                      <tr key={`pending-product-${product.id}`}>
+                        <td className={tdClass}>
+                          <div className="flex items-start gap-3">
+                            {product.imagenUrl ? (
+                              <img src={product.imagenUrl} alt={product.nombre} className="h-12 w-12 rounded-[12px] object-cover" />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-[var(--secondary)] text-xs font-semibold text-[var(--muted-foreground)]">
+                                IMG
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-semibold text-[var(--foreground)]">{product.nombre}</div>
+                              <div className="text-xs text-[var(--muted-foreground)]">
+                                {product.descripcion || 'Sin descripción'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={tdClass}>{product.microtiendaNombre || product.microtienda || 'Sin microtienda'}</td>
+                        <td className={tdClass}>
+                          <Badge>{product.categoriaNombre || product.categoria || 'Sin categoría'}</Badge>
+                        </td>
+                        <td className={tdClass}>
+                          {Number(product.precio || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                        </td>
+                        <td className={tdClass}>{product.stock ?? 0}</td>
+                        <td className={tdClass}>
+                          <div className="flex flex-wrap gap-2">
+                            <button className={smallOutlineButtonClass} onClick={() => setPreviewProduct(product)}>
+                              <Eye size={16} />
+                              Vista previa
+                            </button>
+                            <button
+                              onClick={() =>
+                                openReviewConfirmation({
+                                  type: 'product',
+                                  id: product.id,
+                                  name: `el producto ${product.nombre}`,
+                                  estadoRevision: 'APROBADO',
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                              disabled={reviewActionLoading === `product-${product.id}-APROBADO`}
+                            >
+                              <CheckCircle size={16} />
+                              {reviewActionLoading === `product-${product.id}-APROBADO` ? 'Aprobando...' : 'Aprobar'}
+                            </button>
+                            <button
+                              onClick={() =>
+                                openReviewConfirmation({
+                                  type: 'product',
+                                  id: product.id,
+                                  name: `el producto ${product.nombre}`,
+                                  estadoRevision: 'RECHAZADO',
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                              disabled={reviewActionLoading === `product-${product.id}-RECHAZADO`}
+                            >
+                              <XCircle size={16} />
+                              {reviewActionLoading === `product-${product.id}-RECHAZADO` ? 'Rechazando...' : 'Rechazar'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td className={tdClass} colSpan={6}>
+                          <div className="py-6 text-center text-sm text-[var(--muted-foreground)]">
+                            No hay productos pendientes por aprobar.
                           </div>
                         </td>
                       </tr>
@@ -1231,6 +1404,109 @@ export function AdminDashboard() {
         </div>
       ) : null}
 
+      {confirmLogout ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[560px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-4">
+              <h3 className="mb-2">Cerrar sesión</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                ¿Seguro que deseas cerrar sesión y volver al portal?
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 pt-2">
+              <button type="button" className={outlineButtonClass} onClick={() => setConfirmLogout(false)}>
+                Cancelar
+              </button>
+              <button type="button" className={primaryButtonClass} onClick={handleConfirmLogout}>
+                Sí, cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmReview ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[560px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-4">
+              <h3 className="mb-2">{confirmReview.title}</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                {confirmReview.message}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 pt-2">
+              <button
+                type="button"
+                className={outlineButtonClass}
+                onClick={() => setConfirmReview(null)}
+                disabled={Boolean(reviewActionLoading)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={confirmReview.estadoRevision === 'APROBADO' ? primaryButtonClass : "inline-flex items-center justify-center gap-2 rounded-[var(--radius)] border border-[#DC2626] px-6 py-3 text-base font-semibold text-[#DC2626] transition-all duration-200 hover:bg-[#DC2626] hover:text-[var(--white)] disabled:cursor-not-allowed disabled:opacity-60"}
+                onClick={handleConfirmReview}
+                disabled={Boolean(reviewActionLoading)}
+              >
+                {confirmReview.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewProduct ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-8">
+          <div className="w-full max-w-[760px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="mb-1">{previewProduct.nombre}</h3>
+                <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                  {previewProduct.microtiendaNombre || previewProduct.microtienda || 'Sin microtienda'}
+                </p>
+              </div>
+              <button className={outlineButtonClass} type="button" onClick={() => setPreviewProduct(null)}>
+                Cerrar
+              </button>
+            </div>
+            <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+              <div className="overflow-hidden rounded-[var(--radius)] bg-[var(--secondary)]">
+                {previewProduct.imagenUrl ? (
+                  <img src={previewProduct.imagenUrl} alt={previewProduct.nombre} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex min-h-[280px] items-center justify-center text-sm font-semibold text-[var(--muted-foreground)]">
+                    Sin imagen
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Categoría</p>
+                  <Badge>{previewProduct.categoriaNombre || previewProduct.categoria || 'Sin categoría'}</Badge>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Descripción</p>
+                  <p className="m-0 text-sm leading-6 text-[var(--foreground)]">{previewProduct.descripcion || 'Sin descripción'}</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Precio</p>
+                    <p className="m-0 text-sm font-semibold text-[var(--foreground)]">
+                      {Number(previewProduct.precio || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Stock</p>
+                    <p className="m-0 text-sm font-semibold text-[var(--foreground)]">{previewProduct.stock ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {editingCategory ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
           <div className="w-full max-w-[560px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
@@ -1493,8 +1769,4 @@ export function AdminDashboard() {
     </div>
   );
 }
-
-
-
-
 

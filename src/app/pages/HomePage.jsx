@@ -35,8 +35,9 @@ const categoryDefinitions = [
 const accentButtonClass =
   'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--accent)] px-6 py-3 text-base font-semibold text-[var(--accent-foreground)] transition-all duration-200 hover:-translate-y-px hover:bg-[#E5A600] hover:shadow-[0_4px_12px_rgba(255,184,0,0.3)]';
 const primaryButtonClass =
-      <ChatBot />
   'inline-flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--primary)] px-6 py-3 text-base font-semibold text-[var(--primary-foreground)] transition-all duration-200 hover:-translate-y-px hover:bg-[#152E4D] hover:shadow-[0_4px_12px_rgba(27,58,95,0.25)]';
+const featuredCtaButtonClass =
+  'inline-flex min-h-[60px] items-center justify-center gap-2 rounded-[18px] bg-[var(--primary)] px-8 py-4 text-[1.05rem] font-semibold text-[var(--primary-foreground)] no-underline transition-all duration-200 hover:bg-[#152E4D] hover:shadow-[0_8px_24px_rgba(27,58,95,0.22)]';
 const outlineButtonClass =
   'inline-flex items-center justify-center rounded-[var(--radius)] border-2 border-[var(--primary)] px-6 py-3 text-base font-semibold text-[var(--primary)] transition-all duration-200 hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] hover:shadow-[0_4px_12px_rgba(27,58,95,0.2)]';
 const cardClass =
@@ -369,7 +370,7 @@ export function HomePage() {
           </div>
 
           <div className="mt-12 text-center">
-            <Link to="/marketplace" className={primaryButtonClass}>
+            <Link to="/marketplace" className={featuredCtaButtonClass}>
               Ver Todos los Emprendimientos
               <ArrowRight size={20} />
             </Link>

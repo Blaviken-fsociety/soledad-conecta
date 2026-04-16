@@ -6,25 +6,25 @@
   --font-body: 'Nunito', sans-serif;
 
   /* Institutional Color Palette */
-  --navy-blue: #1B3A5F;
-  --warm-yellow: #FFB800;
+  --navy-blue: #1d294a;
+  --warm-yellow: #ffdd1a;
   --ivory: #FFF9F0;
   --white: #FFFFFF;
 
   --background: #FFF9F0;
-  --foreground: #1B3A5F;
+  --foreground: #1d294a;
   --card: #FFFFFF;
-  --card-foreground: #1B3A5F;
+  --card-foreground: #1d294a;
   --popover: #FFFFFF;
-  --popover-foreground: #1B3A5F;
-  --primary: #1B3A5F;
+  --popover-foreground: #1d294a;
+  --primary: #1d294a;
   --primary-foreground: #FFFFFF;
   --secondary: #F5F5F5;
-  --secondary-foreground: #1B3A5F;
+  --secondary-foreground: #1d294a;
   --muted: #E8E8E8;
   --muted-foreground: #6B7280;
-  --accent: #FFB800;
-  --accent-foreground: #1B3A5F;
+  --accent: #ffdd1a;
+  --accent-foreground: #1d294a;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
   --border: rgba(27, 58, 95, 0.15);
@@ -34,21 +34,21 @@
   --font-weight-medium: 600;
   --font-weight-normal: 400;
   --font-weight-bold: 800;
-  --ring: #FFB800;
-  --chart-1: #FFB800;
-  --chart-2: #1B3A5F;
+  --ring: #ffdd1a;
+  --chart-1: #ffdd1a;
+  --chart-2: #1d294a;
   --chart-3: #4F88C6;
   --chart-4: #FFD966;
   --chart-5: #8B5CF6;
   --radius: 0.5rem;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #1B3A5F;
-  --sidebar-primary: #1B3A5F;
+  --sidebar-foreground: #1d294a;
+  --sidebar-primary: #1d294a;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #FFF9F0;
-  --sidebar-accent-foreground: #1B3A5F;
+  --sidebar-accent-foreground: #1d294a;
   --sidebar-border: rgba(27, 58, 95, 0.15);
-  --sidebar-ring: #FFB800;
+  --sidebar-ring: #ffdd1a;
 }
 
 .dark {
