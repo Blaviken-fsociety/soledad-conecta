@@ -1,4 +1,4 @@
-import {
+﻿import {
   createUser,
   deleteUser,
   findAllUsers,
@@ -7,8 +7,12 @@ import {
   findUserById,
   updateUser,
 } from '../models/userModel.js';
+import { deleteMicrotienda, findMicrotiendaByUserId } from '../models/microtiendaModel.js';
+import { createPqrs, findAllPqrs } from '../models/pqrsModel.js';
 import { buildHttpError } from '../utils/httpError.js';
-import { generateRandomPassword, hashPassword, verifyPassword } from '../utils/password.js';
+import { hashPassword, validatePasswordStrength, verifyPassword } from '../utils/password.js';
+
+const PASSWORD_RESET_SUBJECT = 'Solicitud de cambio de password';
 
 const sanitizeUser = (user) => {
   const isEntrepreneur = user.rol_nombre === 'EMPRENDEDOR';
@@ -71,17 +75,6 @@ export const getUsersService = async () => {
   return users.map(sanitizeUser);
 };
 
-const generateUniquePassword = async () => {
-  const users = await findAllUsers();
-  let generatedPassword = generateRandomPassword();
-
-  while (users.some((user) => verifyPassword(generatedPassword, user.password) || user.password === generatedPassword)) {
-    generatedPassword = generateRandomPassword();
-  }
-
-  return generatedPassword;
-};
-
 export const createUserService = async ({
   nombre,
   tipoDocumento,
@@ -107,7 +100,11 @@ export const createUserService = async ({
   }
 
   const roleRecord = await resolveRole(rol);
-  const generatedPassword = password?.trim() || (await generateUniquePassword());
+  const initialPassword = password?.trim();
+
+  if (!initialPassword) {
+    throw buildHttpError('Debes indicar una contrasena inicial', 400);
+  }
 
   const createdUser = await createUser({
     nombre: nombre.trim(),
@@ -116,7 +113,7 @@ export const createUserService = async ({
     direccion: direccion?.trim() || '',
     telefono: telefono?.trim() || '',
     correo: normalizedEmail,
-    password: hashPassword(generatedPassword),
+    password: hashPassword(initialPassword),
     mustChangePassword: rol === 'entrepreneur',
     passwordChangedByUser: rol !== 'entrepreneur',
     estado: estado ?? true,
@@ -124,9 +121,7 @@ export const createUserService = async ({
     idRol: roleRecord.id_rol,
   });
 
-  return buildUserResponse(createdUser, {
-    generatedPassword,
-  });
+  return buildUserResponse(createdUser);
 };
 
 export const createEntrepreneurRequestService = async ({
@@ -176,6 +171,68 @@ export const createEntrepreneurRequestService = async ({
   return sanitizeUser(createdUser);
 };
 
+export const createPasswordResetRequestService = async ({
+  nombre,
+  tipoDocumento,
+  numeroDocumento,
+  direccion,
+  telefono,
+  correo,
+}) => {
+  if (!nombre || !correo) {
+    throw buildHttpError('Nombre y correo son obligatorios', 400);
+  }
+
+  const normalizedEmail = correo.trim().toLowerCase();
+  const user = await findUserByEmail(normalizedEmail);
+
+  if (!user || user.rol_nombre !== 'EMPRENDEDOR') {
+    throw buildHttpError('No encontramos un emprendedor registrado con esos datos', 404);
+  }
+
+  const sameIdentity =
+    user.nombre?.trim() === nombre.trim() &&
+    (user.tipo_documento || '').trim() === (tipoDocumento || '').trim() &&
+    (user.numero_documento || '').trim() === (numeroDocumento || '').trim() &&
+    (user.direccion || '').trim() === (direccion || '').trim() &&
+    (user.telefono || '').trim() === (telefono || '').trim();
+
+  if (!sameIdentity) {
+    throw buildHttpError('Los datos no coinciden con la cuenta registrada', 400);
+  }
+
+  const existingRequests = await findAllPqrs();
+  const activeResetRequest = existingRequests.find(
+    (item) =>
+      item.tipo === 'PETICION' &&
+      item.asunto === PASSWORD_RESET_SUBJECT &&
+      item.correo?.trim().toLowerCase() === normalizedEmail &&
+      item.estado !== 'COMPLETADO',
+  );
+
+  if (activeResetRequest) {
+    throw buildHttpError(
+      'Ya existe una solicitud de cambio de password pendiente para este usuario',
+      409,
+    );
+  }
+
+  return createPqrs({
+    tipo: 'PETICION',
+    nombre: nombre.trim(),
+    correo: normalizedEmail,
+    telefono: telefono.trim(),
+    asunto: PASSWORD_RESET_SUBJECT,
+    mensaje: [
+      'El usuario solicita restablecer su contraseÃ±a inicial.',
+      `Tipo de documento: ${tipoDocumento.trim()}`,
+      `NÃºmero de documento: ${numeroDocumento.trim()}`,
+      `DirecciÃ³n registrada: ${direccion.trim()}`,
+    ].join('\n'),
+    estado: 'PENDIENTE',
+  });
+};
+
 export const updateUserService = async (id, payload) => {
   const numericId = Number(id);
   const user = await findUserById(numericId);
@@ -212,14 +269,16 @@ export const updateUserService = async (id, payload) => {
     user.estado_revision !== 'APROBADO' &&
     nextEstadoRevision === 'APROBADO' &&
     roleRecord.nombre === 'EMPRENDEDOR';
-  const generatedPassword = isApprovingApplicant ? await generateUniquePassword() : null;
-  const nextPassword =
-    generatedPassword ||
-    (payload.password && payload.password.trim() ? hashPassword(payload.password.trim()) : user.password);
-  const nextPasswordChangedByUser =
-    generatedPassword || (payload.password && payload.password.trim())
-      ? roleRecord.nombre !== 'EMPRENDEDOR'
-      : Boolean(user.password_changed_by_user);
+  const providedPassword = payload.password?.trim();
+
+  if (isApprovingApplicant && !providedPassword) {
+    throw buildHttpError('Debes asignar una contrasena inicial para aprobar al emprendedor', 400);
+  }
+
+  const nextPassword = providedPassword ? hashPassword(providedPassword) : user.password;
+  const nextPasswordChangedByUser = providedPassword
+    ? roleRecord.nombre !== 'EMPRENDEDOR'
+    : Boolean(user.password_changed_by_user);
   const nextMustChangePassword =
     typeof payload.mustChangePassword === 'boolean'
       ? payload.mustChangePassword
@@ -246,7 +305,7 @@ export const updateUserService = async (id, payload) => {
     idRol: roleRecord.id_rol,
   });
 
-  return buildUserResponse(updatedUser, generatedPassword ? { generatedPassword } : {});
+  return buildUserResponse(updatedUser);
 };
 
 export const changeMyPasswordService = async (authUser, { currentPassword, newPassword }) => {
@@ -254,8 +313,10 @@ export const changeMyPasswordService = async (authUser, { currentPassword, newPa
     throw buildHttpError('Debes indicar la contrasena actual y la nueva contrasena', 400);
   }
 
-  if (newPassword.trim().length < 6) {
-    throw buildHttpError('La nueva contrasena debe tener al menos 6 caracteres', 400);
+  const passwordValidationError = validatePasswordStrength(newPassword.trim());
+
+  if (passwordValidationError) {
+    throw buildHttpError(passwordValidationError, 400);
   }
 
   const user = await findUserById(authUser.id);
@@ -294,5 +355,12 @@ export const deleteUserService = async (id) => {
     throw buildHttpError('Usuario no encontrado', 404);
   }
 
+  const linkedMicrotienda = await findMicrotiendaByUserId(numericId, { includeInactive: true });
+
+  if (linkedMicrotienda?.id_microtienda) {
+    await deleteMicrotienda(linkedMicrotienda.id_microtienda);
+  }
+
   await deleteUser(numericId);
 };
+

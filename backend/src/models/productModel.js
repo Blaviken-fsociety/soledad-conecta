@@ -5,6 +5,13 @@ const buildProduct = (product, data) => {
     return null;
   }
 
+  const imagenes =
+    Array.isArray(product.imagenes) && product.imagenes.length
+      ? product.imagenes.filter(Boolean)
+      : product.imagen_url
+        ? [product.imagen_url]
+        : [];
+
   const categoria = data.categorias.find((item) => item.id_categoria === product.id_categoria);
   const microtienda = data.microtiendas.find((item) => item.id_microtienda === product.id_microtienda);
   const calificaciones = data.calificaciones.filter(
@@ -19,7 +26,8 @@ const buildProduct = (product, data) => {
     ...product,
     categoria: categoria?.nombre || null,
     microtienda: microtienda?.nombre || null,
-    imagen_url: product.imagen_url || '',
+    imagen_url: imagenes[0] || '',
+    imagenes,
     promedio_calificacion: Number(promedio.toFixed(1)),
     total_calificaciones: calificaciones.length,
   };
@@ -51,6 +59,7 @@ export const createProduct = async ({
   precio,
   stock,
   imagenUrl,
+  imagenes,
   estado,
   estadoRevision,
   observacionRevision,
@@ -67,6 +76,7 @@ export const createProduct = async ({
       precio,
       stock,
       imagen_url: imagenUrl,
+      imagenes: Array.isArray(imagenes) && imagenes.length ? imagenes : imagenUrl ? [imagenUrl] : [],
       estado,
       estado_revision: estadoRevision,
       observacion_revision: observacionRevision,
@@ -84,7 +94,7 @@ export const createProduct = async ({
 
 export const updateProduct = async (
   id,
-  { nombre, descripcion, precio, stock, imagenUrl, estado, estadoRevision, observacionRevision, idCategoria },
+  { nombre, descripcion, precio, stock, imagenUrl, imagenes, estado, estadoRevision, observacionRevision, idCategoria },
 ) => {
   await updateData(async (data) => {
     data.productos = data.productos.map((item) =>
@@ -96,6 +106,7 @@ export const updateProduct = async (
             precio,
             stock,
             imagen_url: imagenUrl,
+            imagenes: Array.isArray(imagenes) && imagenes.length ? imagenes : imagenUrl ? [imagenUrl] : [],
             estado,
             estado_revision: estadoRevision,
             observacion_revision: observacionRevision,

@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   changeMyPassword,
   createEntrepreneurRequest,
+  createPasswordResetRequest,
   createUser,
   deleteUser,
   getUsers,
@@ -13,6 +14,7 @@ import { requireAuth, requireRole } from '../middlewares/authMiddleware.js';
 const router = Router();
 
 router.post('/solicitudes-emprendedor', createEntrepreneurRequest);
+router.post('/solicitudes-cambio-password', createPasswordResetRequest);
 router.patch('/me/password', requireAuth, changeMyPassword);
 router.get('/', requireAuth, requireRole('admin'), getUsers);
 router.post('/', requireAuth, requireRole('admin'), createUser);

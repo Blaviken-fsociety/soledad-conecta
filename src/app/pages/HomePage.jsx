@@ -337,9 +337,9 @@ export function HomePage() {
                         <span className={badgeClass}>{business.category}</span>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <h3 className="mb-2 text-xl">{business.name}</h3>
-                      <p className="mb-3 line-clamp-2 text-sm text-[var(--muted-foreground)]">
+                    <div className="flex min-h-[205px] flex-col p-6">
+                      <h3 className="mb-2 min-h-[56px] text-xl">{business.name}</h3>
+                      <p className="mb-3 min-h-[40px] line-clamp-2 text-sm text-[var(--muted-foreground)]">
                         {business.description}
                       </p>
                       <div className="flex items-center justify-between">
@@ -354,7 +354,7 @@ export function HomePage() {
                         </div>
                         <ExternalLink size={18} color="var(--primary)" />
                       </div>
-                      <div className="mt-3 border-t border-[var(--border)] pt-3">
+                      <div className="mt-auto border-t border-[var(--border)] pt-3">
                         <div className="flex items-center gap-2">
                           <Users size={14} color="var(--muted-foreground)" />
                           <span className="text-sm text-[var(--muted-foreground)]">

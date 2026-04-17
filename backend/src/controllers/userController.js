@@ -1,6 +1,7 @@
 import {
   changeMyPasswordService,
   createEntrepreneurRequestService,
+  createPasswordResetRequestService,
   createUserService,
   deleteUserService,
   getUsersService,
@@ -40,6 +41,19 @@ export const createEntrepreneurRequest = async (request, response, next) => {
     response.status(201).json({
       success: true,
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createPasswordResetRequest = async (request, response, next) => {
+  try {
+    const resetRequest = await createPasswordResetRequestService(request.body);
+
+    response.status(201).json({
+      success: true,
+      data: resetRequest,
     });
   } catch (error) {
     next(error);

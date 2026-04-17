@@ -16,6 +16,7 @@ const sanitizeProduct = (product) => ({
   precio: Number(product.precio || 0),
   stock: Number(product.stock || 0),
   imagenUrl: product.imagen_url || '',
+  imagenes: Array.isArray(product.imagenes) ? product.imagenes : product.imagen_url ? [product.imagen_url] : [],
   estado: Boolean(product.estado),
   estadoRevision: product.estado_revision || 'PENDIENTE',
   observacionRevision: product.observacion_revision || '',
@@ -88,6 +89,7 @@ export const createProductService = async (authUser, payload) => {
     precio: Number(payload.precio || 0),
     stock: Number(payload.stock || 0),
     imagenUrl: payload.imagenUrl || '',
+    imagenes: Array.isArray(payload.imagenes) ? payload.imagenes.filter(Boolean) : [],
     estado: payload.estado ?? true,
     estadoRevision: 'PENDIENTE',
     observacionRevision: '',
@@ -121,9 +123,16 @@ export const updateProductService = async (authUser, productId, payload) => {
     precio: Number(payload.precio ?? product.precio ?? 0),
     stock: Number(payload.stock ?? product.stock ?? 0),
     imagenUrl: payload.imagenUrl || product.imagen_url || '',
+    imagenes: Array.isArray(payload.imagenes) && payload.imagenes.length
+      ? payload.imagenes.filter(Boolean)
+      : Array.isArray(product.imagenes) && product.imagenes.length
+        ? product.imagenes
+        : product.imagen_url
+          ? [product.imagen_url]
+          : [],
     estado: payload.estado ?? product.estado ?? true,
-    estadoRevision: product.estado_revision || 'PENDIENTE',
-    observacionRevision: product.observacion_revision || '',
+    estadoRevision: 'PENDIENTE',
+    observacionRevision: '',
     idCategoria: categoryId,
   });
 
@@ -148,6 +157,7 @@ export const reviewProductService = async (id, { estadoRevision, observacionRevi
     precio: product.precio,
     stock: product.stock,
     imagenUrl: product.imagen_url || '',
+    imagenes: Array.isArray(product.imagenes) && product.imagenes.length ? product.imagenes : product.imagen_url ? [product.imagen_url] : [],
     estado: product.estado,
     estadoRevision,
     observacionRevision: observacionRevision || '',
