@@ -1,6 +1,20 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Package, Star, Edit, Trash2, Plus, Upload, Eye, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Edit,
+  Eye,
+  MessageSquare,
+  Package,
+  Plus,
+  Star,
+  Store,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
 import {
@@ -11,6 +25,7 @@ import {
   getEntrepreneurMetricsRequest,
   getMyMicrotiendaRequest,
   getMyProductsRequest,
+  getMyRatingsRequest,
   updateMicrotiendaRequest,
   updateProductRequest,
 } from '../utils/api.js';
@@ -39,7 +54,7 @@ const initialProfileForm = {
 
 const MAX_IMAGE_SIZE_MB = 50;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
-const MAX_PRODUCT_IMAGES = 4;
+const MAX_PRODUCT_IMAGES = 5;
 
 const cardClass =
   'rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
@@ -85,6 +100,9 @@ const formatReviewStatus = (status) => {
   if (status === 'RECHAZADO') return 'Rechazado';
   return 'Pendiente';
 };
+
+const formatReviewDate = (value) =>
+  value ? new Date(value).toLocaleDateString('es-CO', { dateStyle: 'medium' }) : 'Sin fecha';
 
 const normalizeProductImages = (product) => {
   if (Array.isArray(product?.imagenes) && product.imagenes.length) {
@@ -142,7 +160,7 @@ const validateImageFile = (file) => {
   }
 
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    throw new Error(`La imagen supera el lí­mite de ${MAX_IMAGE_SIZE_MB} MB.`);
+    throw new Error(`La imagen supera el límite de ${MAX_IMAGE_SIZE_MB} MB.`);
   }
 };
 
@@ -171,29 +189,52 @@ export function EntrepreneurDashboard() {
   const [productImageNames, setProductImageNames] = useState([]);
   const [editProductImageNames, setEditProductImageNames] = useState([]);
   const [businessImageName, setBusinessImageName] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsPagination, setReviewsPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (targetReviewsPage = reviewsPage) => {
     setDashboardLoading(true);
     setDashboardError('');
 
     try {
-      const [metricsResult, microtiendaResult, productsResult, categoriesResult] = await Promise.allSettled([
+      const [metricsResult, microtiendaResult, productsResult, categoriesResult, reviewsResult] = await Promise.allSettled([
         getEntrepreneurMetricsRequest(),
         getMyMicrotiendaRequest(),
         getMyProductsRequest(),
         getCategoriesRequest(true),
+        getMyRatingsRequest({ page: targetReviewsPage, limit: 10 }),
       ]);
 
       const metricsResponse = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
       const microtiendaResponse = microtiendaResult.status === 'fulfilled' ? microtiendaResult.value : null;
       const productsResponse = productsResult.status === 'fulfilled' ? productsResult.value : [];
       const categoriesResponse = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
+      const reviewsResponse = reviewsResult.status === 'fulfilled' ? reviewsResult.value : { items: [], pagination: reviewsPagination };
       const fallbackCategoryId = categoriesResponse?.[0]?.id ? String(categoriesResponse[0].id) : '';
 
       setMetrics(metricsResponse || null);
       setMicrotienda(microtiendaResponse || null);
       setProducts(Array.isArray(productsResponse) ? productsResponse : []);
       setCategories(Array.isArray(categoriesResponse) ? categoriesResponse : []);
+      setReviews(Array.isArray(reviewsResponse?.items) ? reviewsResponse.items : []);
+      setReviewsPagination(
+        reviewsResponse?.pagination || {
+          page: targetReviewsPage,
+          limit: 10,
+          total: 0,
+          totalPages: 1,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        },
+      );
       setProfileForm({
         ...mapMicrotiendaToForm(microtiendaResponse),
         idCategoria: microtiendaResponse?.categoriaId
@@ -217,8 +258,8 @@ export function EntrepreneurDashboard() {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    loadDashboardData(reviewsPage);
+  }, [reviewsPage]);
 
   useEffect(() => {
     if (categories.length && !productForm.idCategoria) {
@@ -246,17 +287,31 @@ export function EntrepreneurDashboard() {
 
     return [
       {
-        icon: Eye,
+        icon: Store,
         label: 'Mi negocio',
         value: microtienda?.nombre || 'Sin registro',
-        helper: microtienda?.estadoRevision ? `Revision: ${formatReviewStatus(microtienda.estadoRevision)}` : 'Crea tu espacio comercial',
+        helper: microtienda?.estadoRevision ? `Revisión: ${formatReviewStatus(microtienda.estadoRevision)}` : 'Crea tu espacio comercial',
         color: 'var(--primary)',
       },
       {
+        icon: Eye,
+        label: 'Visitas totales',
+        value: String(Number(metrics?.totalVisitasMicrotienda || 0)),
+        helper: `${Number(metrics?.visitasDirectasMicrotienda || 0)} directas y ${Number(metrics?.visualizacionesProductos || 0)} a productos`,
+        color: 'var(--accent)',
+      },
+      {
         icon: Star,
-        label: 'Calificacion',
+        label: 'Calificación',
         value: promedioCalificacion ? promedioCalificacion.toFixed(1) : '0.0',
         helper: `${totalCalificaciones} reseñas aprobadas`,
+        color: 'var(--primary)',
+      },
+      {
+        icon: MessageSquare,
+        label: 'Reseñas recibidas',
+        value: String(Number(metrics?.totalResenasRecibidas || reviewsPagination.total || 0)),
+        helper: `${Number(metrics?.totalResenasAprobadas || totalCalificaciones)} aprobadas actualmente`,
         color: 'var(--accent)',
       },
       {
@@ -276,13 +331,23 @@ export function EntrepreneurDashboard() {
         color: 'var(--accent)',
       },
     ];
-  }, [metrics, microtienda, products]);
+  }, [metrics, microtienda, products, reviewsPagination.total]);
 
   const recentProducts = useMemo(() => {
     return [...products]
       .sort((left, right) => new Date(right.fechaCreacion || 0) - new Date(left.fechaCreacion || 0))
       .slice(0, 6);
   }, [products]);
+
+  const topViewedProducts = useMemo(
+    () => (Array.isArray(metrics?.productosMasVistos) ? metrics.productosMasVistos : []),
+    [metrics],
+  );
+
+  const reviewPageNumbers = useMemo(
+    () => Array.from({ length: reviewsPagination.totalPages || 1 }, (_, index) => index + 1),
+    [reviewsPagination.totalPages],
+  );
 
   const handleProductFormChange = (field) => (event) => {
     const nextValue = field === 'estado' ? event.target.checked : event.target.value;
@@ -291,7 +356,6 @@ export function EntrepreneurDashboard() {
       ...current,
       [field]: nextValue,
     }));
-
   };
 
   const handleEditProductFormChange = (field) => (event) => {
@@ -301,7 +365,6 @@ export function EntrepreneurDashboard() {
       ...current,
       [field]: nextValue,
     }));
-
   };
 
   const handleProfileFormChange = (field) => (event) => {
@@ -469,7 +532,7 @@ export function EntrepreneurDashboard() {
 
       setShowProductForm(false);
       resetProductForm();
-      await loadDashboardData();
+      await loadDashboardData(reviewsPage);
     } catch (error) {
       setDashboardError(error.message || 'No fue posible enviar el producto a aprobación.');
     } finally {
@@ -519,7 +582,7 @@ export function EntrepreneurDashboard() {
       });
 
       closeEditProduct();
-      await loadDashboardData();
+      await loadDashboardData(reviewsPage);
     } catch (error) {
       setDashboardError(error.message || 'No fue posible enviar la edición del producto a revisión.');
     } finally {
@@ -538,7 +601,7 @@ export function EntrepreneurDashboard() {
     try {
       await deleteProductRequest(productToDelete.id);
       setProductToDelete(null);
-      await loadDashboardData();
+      await loadDashboardData(reviewsPage);
     } catch (error) {
       setDashboardError(error.message || 'No fue posible eliminar el producto.');
     } finally {
@@ -576,7 +639,7 @@ export function EntrepreneurDashboard() {
         await createMicrotiendaRequest(payload);
       }
 
-      await loadDashboardData();
+      await loadDashboardData(reviewsPage);
     } catch (error) {
       setProfileFormError(error.message || 'No fue posible guardar la información del negocio.');
     } finally {
@@ -615,7 +678,9 @@ export function EntrepreneurDashboard() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="mb-2 text-[var(--white)]">Panel de Emprendedor</h1>
-            <p className="m-0 text-[rgba(255,255,255,0.9)]">Gestiona tu negocio y productos con información real.</p>
+            <p className="m-0 text-[rgba(255,255,255,0.9)]">
+              Gestiona tu negocio, revisa tu desempeño y consulta todas tus reseñas.
+            </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {businessButton}
@@ -635,6 +700,7 @@ export function EntrepreneurDashboard() {
           {[
             ['overview', 'Resumen'],
             ['products', 'Productos'],
+            ['reviews', 'Reseñas'],
             ['profile', 'Perfil del Negocio'],
           ].map(([key, label]) => (
             <button
@@ -666,7 +732,7 @@ export function EntrepreneurDashboard() {
 
         {!dashboardLoading && activeTab === 'overview' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {stats.map((stat, index) => (
                 <div key={index} className={cardClass}>
                   <div className="mb-3 flex items-start justify-between">
@@ -689,60 +755,39 @@ export function EntrepreneurDashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,1fr)]">
               <div className={cardClass}>
-                <h3 className="mb-6">Productos del catálogo</h3>
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="mb-1">Productos más vistos</h3>
+                    <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                      Rendimiento de tu catálogo basado en visitas reales.
+                    </p>
+                  </div>
+                  <BarChart3 size={22} color="var(--primary)" />
+                </div>
                 <div className={tableWrapperClass}>
                   <table className={tableClass}>
                     <thead>
                       <tr>
                         <th className={thClass}>Producto</th>
-                        <th className={thClass}>Precio</th>
+                        <th className={thClass}>Vistas</th>
                         <th className={thClass}>Stock</th>
-                        <th className={thClass}>Revision</th>
-                        <th className={thClass}>Calificacion</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {recentProducts.length ? (
-                        recentProducts.map((product) => (
+                      {topViewedProducts.length ? (
+                        topViewedProducts.map((product) => (
                           <tr key={product.id}>
                             <td className={`${tdClass} font-semibold`}>{product.nombre}</td>
-                            <td className={tdClass}>{formatPrice(product.precio)}</td>
-                            <td className={tdClass}>
-                              <Badge
-                                bg={getStockLabel(product.stock) === 'En stock' ? 'var(--primary)' : '#F59E0B'}
-                                color="var(--white)"
-                              >
-                                {getStockLabel(product.stock)}
-                              </Badge>
-                            </td>
-                            <td className={tdClass}>
-                              <Badge
-                                bg={
-                                  product.estadoRevision === 'APROBADO'
-                                    ? '#10B981'
-                                    : product.estadoRevision === 'RECHAZADO'
-                                      ? '#DC2626'
-                                      : '#ffdd1a'
-                                }
-                                color="var(--white)"
-                              >
-                                {formatReviewStatus(product.estadoRevision)}
-                              </Badge>
-                            </td>
-                            <td className={tdClass}>
-                              <div className="flex items-center gap-2">
-                                <Star size={16} color="var(--accent)" />
-                                {Number(product.promedioCalificacion || 0).toFixed(1)} ({product.totalCalificaciones || 0})
-                              </div>
-                            </td>
+                            <td className={tdClass}>{product.vistas}</td>
+                            <td className={tdClass}>{product.stock}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td className={tdClass} colSpan={5}>
-                            Todaví­a no hay productos registrados en tu catálogo.
+                          <td className={tdClass} colSpan={3}>
+                            Todavía no hay suficientes visitas registradas para tu catálogo.
                           </td>
                         </tr>
                       )}
@@ -771,7 +816,7 @@ export function EntrepreneurDashboard() {
                   </div>
                   <p className="mb-4 text-sm text-[var(--muted-foreground)]">
                     {microtienda
-                      ? microtienda.descripcion || 'Tu negocio ya está¡ conectado al backend y listo para ser gestionado.'
+                      ? microtienda.descripcion || 'Tu negocio ya está conectado al backend y listo para ser gestionado.'
                       : 'Completa el perfil para registrar tu negocio en la plataforma institucional.'}
                   </p>
                   <button className={`${smallOutlineButtonClass} w-full`} onClick={() => setActiveTab('profile')}>
@@ -779,14 +824,27 @@ export function EntrepreneurDashboard() {
                   </button>
                 </div>
 
-                <div
-                  className="rounded-[var(--radius)] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                  style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
-                >
-                  <h3 className="mb-4">Consejo del dia</h3>
-                  <p className="m-0 leading-[1.6]">
-                    Mantener tus productos con stock actualizado y descripciones claras mejora la revisión y la confianza de los visitantes.
-                  </p>
+                <div className={cardClass}>
+                  <h3 className="mb-4">Actividad reciente</h3>
+                  <div className="space-y-3">
+                    {(metrics?.actividadSemanal || []).length ? (
+                      metrics.actividadSemanal.map((item) => (
+                        <div key={item.label} className="rounded-[var(--radius)] bg-[var(--secondary)] px-4 py-3">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-[var(--foreground)]">{item.label}</span>
+                            <span className="text-sm font-semibold text-[var(--primary)]">{item.totalViews} vistas</span>
+                          </div>
+                          <div className="text-xs text-[var(--muted-foreground)]">
+                            Microtienda: {item.microtiendaViews} · Productos: {item.productViews}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                        Aún no hay actividad semanal para mostrar.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -796,7 +854,7 @@ export function EntrepreneurDashboard() {
         {!dashboardLoading && activeTab === 'products' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2>Gestion de Productos</h2>
+              <h2>Gestión de Productos</h2>
               <button onClick={() => setShowProductForm((current) => !current)} className={accentButtonClass}>
                 <Plus size={18} />
                 Nuevo Producto
@@ -813,9 +871,9 @@ export function EntrepreneurDashboard() {
                       <input type="text" className={inputClass} value={productForm.nombre} onChange={handleProductFormChange('nombre')} required />
                     </div>
                     <div>
-                      <label className={labelClass}>Categoria *</label>
+                      <label className={labelClass}>Categoría *</label>
                       <select className={inputClass} value={productForm.idCategoria} onChange={handleProductFormChange('idCategoria')} required>
-                        <option value="">Selecciona una categorí­a</option>
+                        <option value="">Selecciona una categoría</option>
                         {categories.map((category) => (
                           <option key={category.id} value={category.id}>
                             {category.nombre}
@@ -832,13 +890,13 @@ export function EntrepreneurDashboard() {
                       <input type="number" className={inputClass} min="0" value={productForm.stock} onChange={handleProductFormChange('stock')} required />
                     </div>
                     <div className="md:col-span-2">
-                      <label className={labelClass}>Descripcion *</label>
+                      <label className={labelClass}>Descripción *</label>
                       <textarea className={`${inputClass} min-h-[120px]`} rows={3} value={productForm.descripcion} onChange={handleProductFormChange('descripcion')} required />
                     </div>
                     <div className="md:col-span-2">
                       <label className={labelClass}>Imágenes del producto *</label>
                       <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                        Carga hasta {MAX_PRODUCT_IMAGES} imágenes de hasta {MAX_IMAGE_SIZE_MB} MB. Puedes arrastrarlas o elegirlas desde tu equipo.
+                        Carga hasta {MAX_PRODUCT_IMAGES} imágenes de hasta {MAX_IMAGE_SIZE_MB} MB. La primera será la portada principal.
                       </p>
                       <div
                         className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
@@ -847,10 +905,10 @@ export function EntrepreneurDashboard() {
                       >
                         <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-3" />
                         <p className="mb-3 text-sm text-[var(--muted-foreground)]">
-                          Arrastra una imagen aquí­ o selecciona un archivo desde tu equipo.
+                          Arrastra una imagen aquí o selecciona archivos desde tu equipo.
                         </p>
                         <label className={smallOutlineButtonClass} htmlFor="create-product-image-input">
-                          Elegir archivo
+                          Elegir archivos
                         </label>
                         <input
                           id="create-product-image-input"
@@ -865,7 +923,7 @@ export function EntrepreneurDashboard() {
                         </p>
                       </div>
                       {productForm.imagenes.length ? (
-                        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
                           {productForm.imagenes.map((image, index) => (
                             <div key={`${image.slice(0, 20)}-${index}`} className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)]">
                               <button type="button" className="block w-full border-none bg-transparent p-0" onClick={() => openProductPreview({ ...productForm, imagenUrl: image }, index)}>
@@ -914,10 +972,10 @@ export function EntrepreneurDashboard() {
                   <thead>
                     <tr>
                       <th className={thClass}>Producto</th>
-                      <th className={thClass}>Categoria</th>
+                      <th className={thClass}>Categoría</th>
                       <th className={thClass}>Precio</th>
                       <th className={thClass}>Stock</th>
-                      <th className={thClass}>Revision</th>
+                      <th className={thClass}>Revisión</th>
                       <th className={thClass}>Acciones</th>
                     </tr>
                   </thead>
@@ -927,7 +985,7 @@ export function EntrepreneurDashboard() {
                         <tr key={product.id}>
                           <td className={tdClass}>
                             <div className="flex items-start gap-3">
-                              {product.imagenUrl ? (
+                              {normalizeProductImages(product)[0] ? (
                                 <img
                                   src={normalizeProductImages(product)[0]}
                                   alt={product.nombre}
@@ -941,10 +999,13 @@ export function EntrepreneurDashboard() {
                               <div>
                                 <div className="font-semibold">{product.nombre}</div>
                                 <div className="text-xs text-[var(--muted-foreground)]">{product.descripcion || 'Sin descripción'}</div>
+                                <div className="mt-1 text-xs text-[var(--muted-foreground)]">
+                                  {normalizeProductImages(product).length} imágenes
+                                </div>
                               </div>
                             </div>
                           </td>
-                          <td className={tdClass}>{product.categoria || 'Sin categorí­a'}</td>
+                          <td className={tdClass}>{product.categoria || 'Sin categoría'}</td>
                           <td className={tdClass}>{formatPrice(product.precio)}</td>
                           <td className={tdClass}>{product.stock}</td>
                           <td className={tdClass}>
@@ -982,7 +1043,7 @@ export function EntrepreneurDashboard() {
                     ) : (
                       <tr>
                         <td className={tdClass} colSpan={6}>
-                          No hay productos registrados todaví­a.
+                          No hay productos registrados todavía.
                         </td>
                       </tr>
                     )}
@@ -993,10 +1054,109 @@ export function EntrepreneurDashboard() {
           </motion.div>
         ) : null}
 
+        {!dashboardLoading && activeTab === 'reviews' ? (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <div className={`${cardClass} mb-6`}>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="mb-1">Reseñas de tu microtienda</h2>
+                  <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                    Consulta todas las opiniones recibidas desde tu perfil de emprendedor.
+                  </p>
+                </div>
+                <Badge bg="var(--accent)" color="var(--accent-foreground)">
+                  {reviewsPagination.total} reseñas
+                </Badge>
+              </div>
+
+              <div className={tableWrapperClass}>
+                <table className={tableClass}>
+                  <thead>
+                    <tr>
+                      <th className={thClass}>Usuario</th>
+                      <th className={thClass}>Calificación</th>
+                      <th className={thClass}>Comentario</th>
+                      <th className={thClass}>Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviews.length ? (
+                      reviews.map((review) => (
+                        <tr key={review.id}>
+                          <td className={tdClass}>
+                            <div className="font-semibold">{review.nombreVisitante || 'Visitante'}</div>
+                            <div className="text-xs text-[var(--muted-foreground)]">
+                              {review.producto ? `Producto: ${review.producto}` : 'Reseña general'}
+                            </div>
+                          </td>
+                          <td className={tdClass}>
+                            <div className="flex items-center gap-2">
+                              <Star size={16} color="var(--accent)" fill="var(--accent)" />
+                              {review.puntuacion}/5
+                            </div>
+                          </td>
+                          <td className={tdClass}>
+                            <p className="m-0 max-w-[520px] leading-6 text-[var(--foreground)]">{review.comentario}</p>
+                          </td>
+                          <td className={tdClass}>{formatReviewDate(review.fecha)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className={tdClass} colSpan={4}>
+                          Todavía no has recibido reseñas en tu perfil.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {reviews.length ? (
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewsPage((current) => Math.max(current - 1, 1))}
+                    disabled={!reviewsPagination.hasPreviousPage}
+                    className={smallOutlineButtonClass}
+                  >
+                    <ChevronLeft size={16} />
+                    Anterior
+                  </button>
+                  {reviewPageNumbers.map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => setReviewsPage(pageNumber)}
+                      className={tabClass}
+                      style={
+                        reviewsPage === pageNumber
+                          ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+                          : { border: '2px solid var(--primary)', color: 'var(--primary)', backgroundColor: 'transparent' }
+                      }
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setReviewsPage((current) => Math.min(current + 1, reviewsPagination.totalPages || 1))}
+                    disabled={!reviewsPagination.hasNextPage}
+                    className={smallOutlineButtonClass}
+                  >
+                    Siguiente
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </motion.div>
+        ) : null}
+
         {!dashboardLoading && activeTab === 'profile' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className={cardClass}>
-              <h2 className="mb-6">{microtienda ? 'Informacion del negocio' : 'Registrar negocio'}</h2>
+              <h2 className="mb-6">{microtienda ? 'Información del negocio' : 'Registrar negocio'}</h2>
               <form onSubmit={handleSaveProfile}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
@@ -1004,9 +1164,9 @@ export function EntrepreneurDashboard() {
                     <input type="text" className={inputClass} value={profileForm.nombre} onChange={handleProfileFormChange('nombre')} required />
                   </div>
                   <div>
-                    <label className={labelClass}>Categoria *</label>
+                    <label className={labelClass}>Categoría *</label>
                     <select className={inputClass} value={profileForm.idCategoria} onChange={handleProfileFormChange('idCategoria')} required>
-                      <option value="">Selecciona una categorí­a</option>
+                      <option value="">Selecciona una categoría</option>
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.nombre}
@@ -1015,7 +1175,7 @@ export function EntrepreneurDashboard() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className={labelClass}>Descripcion *</label>
+                    <label className={labelClass}>Descripción *</label>
                     <textarea className={`${inputClass} min-h-[140px]`} rows={4} value={profileForm.descripcion} onChange={handleProfileFormChange('descripcion')} required />
                   </div>
                   <div>
@@ -1042,7 +1202,7 @@ export function EntrepreneurDashboard() {
                     >
                       <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-2" />
                       <p className="mb-3 text-[var(--muted-foreground)]">
-                        Arrastra el logo o una foto del negocio aquí­, o selecciónala desde tu equipo.
+                        Arrastra el logo o una foto del negocio aquí, o selecciónala desde tu equipo.
                       </p>
                       <label className={smallOutlineButtonClass} htmlFor="business-image-input">
                         Elegir archivo
@@ -1084,7 +1244,7 @@ export function EntrepreneurDashboard() {
 
       {editingProduct ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
-          <div className="max-h-[88vh] w-full max-w-[720px] overflow-y-auto rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+          <div className="max-h-[88vh] w-full max-w-[780px] overflow-y-auto rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <h3 className="mb-1">Editar producto</h3>
@@ -1104,9 +1264,9 @@ export function EntrepreneurDashboard() {
                   <input className={inputClass} value={editProductForm.nombre} onChange={handleEditProductFormChange('nombre')} required />
                 </div>
                 <div>
-                  <label className={labelClass}>Categoria</label>
+                  <label className={labelClass}>Categoría</label>
                   <select className={inputClass} value={editProductForm.idCategoria} onChange={handleEditProductFormChange('idCategoria')} required>
-                    <option value="">Selecciona una categorí­a</option>
+                    <option value="">Selecciona una categoría</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.nombre}
@@ -1128,14 +1288,14 @@ export function EntrepreneurDashboard() {
               </div>
 
               <div>
-                <label className={labelClass}>Descripcion</label>
+                <label className={labelClass}>Descripción</label>
                 <textarea className={`${inputClass} min-h-[120px]`} rows={3} value={editProductForm.descripcion} onChange={handleEditProductFormChange('descripcion')} required />
               </div>
 
               <div>
                 <label className={labelClass}>Imágenes del producto</label>
                 <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                  Agrega o reemplaza imágenes del producto. Puedes mantener las existentes, sumar nuevas o quitar las que no quieras.
+                  Puedes conservar, agregar o reemplazar imágenes. Máximo {MAX_PRODUCT_IMAGES} por producto.
                 </p>
                 <div
                   className="mt-3 rounded-[var(--radius)] border-2 border-dashed border-[var(--border)] bg-[var(--secondary)] p-6 text-center transition-all duration-200 hover:border-[var(--accent)]"
@@ -1144,10 +1304,10 @@ export function EntrepreneurDashboard() {
                 >
                   <Upload size={32} color="var(--muted-foreground)" className="mx-auto mb-3" />
                   <p className="mb-3 text-sm text-[var(--muted-foreground)]">
-                    Arrastra una imagen aquí­ o elige un archivo para reemplazar la actual.
+                    Arrastra nuevas imágenes aquí o súbelas desde tu equipo.
                   </p>
                   <label className={smallOutlineButtonClass} htmlFor="edit-product-image-input">
-                    Elegir archivo
+                    Elegir archivos
                   </label>
                   <input
                     id="edit-product-image-input"
@@ -1162,7 +1322,7 @@ export function EntrepreneurDashboard() {
                   </p>
                 </div>
                 {editProductForm.imagenes.length ? (
-                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
                     {editProductForm.imagenes.map((image, index) => (
                       <div key={`${image.slice(0, 20)}-${index}`} className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)]">
                         <button type="button" className="block w-full border-none bg-transparent p-0" onClick={() => openProductPreview({ ...editProductForm, imagenUrl: image, nombre: editProductForm.nombre, descripcion: editProductForm.descripcion, precio: editProductForm.precio, stock: editProductForm.stock }, index)}>
@@ -1202,7 +1362,7 @@ export function EntrepreneurDashboard() {
 
       {previewProduct ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
-          <div className="w-full max-w-[760px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+          <div className="w-full max-w-[840px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <h3 className="mb-1">{previewProduct.nombre || 'Vista previa del producto'}</h3>
@@ -1215,7 +1375,7 @@ export function EntrepreneurDashboard() {
               </button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+            <div className="grid gap-6 md:grid-cols-[360px_1fr]">
               <div className="space-y-4">
                 <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--secondary)]">
                   {normalizeProductImages(previewProduct)[previewProductImageIndex] ? (
@@ -1223,7 +1383,7 @@ export function EntrepreneurDashboard() {
                       <img
                         src={normalizeProductImages(previewProduct)[previewProductImageIndex]}
                         alt={`${previewProduct.nombre || 'Producto'} ${previewProductImageIndex + 1}`}
-                        className="h-[320px] w-full object-cover"
+                        className="h-[360px] w-full object-cover"
                       />
 
                       {normalizeProductImages(previewProduct).length > 1 ? (
@@ -1259,11 +1419,26 @@ export function EntrepreneurDashboard() {
                       ) : null}
                     </div>
                   ) : (
-                    <div className="flex h-[320px] items-center justify-center text-sm font-semibold text-[var(--muted-foreground)]">
+                    <div className="flex h-[360px] items-center justify-center text-sm font-semibold text-[var(--muted-foreground)]">
                       Sin imagen
                     </div>
                   )}
                 </div>
+
+                {normalizeProductImages(previewProduct).length > 1 ? (
+                  <div className="grid grid-cols-5 gap-2">
+                    {normalizeProductImages(previewProduct).map((image, index) => (
+                      <button
+                        key={`${image.slice(0, 20)}-${index}`}
+                        type="button"
+                        className={`overflow-hidden rounded-[14px] border ${previewProductImageIndex === index ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}
+                        onClick={() => setPreviewProductImageIndex(index)}
+                      >
+                        <img src={image} alt={`Miniatura ${index + 1}`} className="h-16 w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-4">
@@ -1322,7 +1497,7 @@ export function EntrepreneurDashboard() {
             <div className="mb-4">
               <h3 className="mb-2">Eliminar producto</h3>
               <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
-                Estas a punto de eliminar <span className="font-semibold text-[var(--foreground)]">{productToDelete.nombre}</span>.
+                Estás a punto de eliminar <span className="font-semibold text-[var(--foreground)]">{productToDelete.nombre}</span>.
                 Esta acción no se puede deshacer. ¿Seguro que deseas continuar?
               </p>
             </div>
@@ -1331,7 +1506,7 @@ export function EntrepreneurDashboard() {
                 Cancelar
               </button>
               <button type="button" className={smallDangerButtonClass} onClick={handleDeleteProduct} disabled={Boolean(deletingProductId)}>
-                {deletingProductId ? 'Eliminando...' : 'Si, eliminar'}
+                {deletingProductId ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
             </div>
           </div>

@@ -141,9 +141,17 @@ export const updateMicrotienda = async (
 
 export const deleteMicrotienda = async (id) => {
   await updateData(async (data) => {
+    const relatedProductIds = data.productos
+      .filter((item) => item.id_microtienda === id)
+      .map((item) => item.id_producto);
+
     data.microtiendas = data.microtiendas.filter((item) => item.id_microtienda !== id);
     data.productos = data.productos.filter((item) => item.id_microtienda !== id);
     data.calificaciones = data.calificaciones.filter((item) => item.id_microtienda !== id);
+    data.microtienda_views = (data.microtienda_views || []).filter((item) => item.microtienda_id !== id);
+    data.product_views = (data.product_views || []).filter(
+      (item) => item.microtienda_id !== id && !relatedProductIds.includes(item.producto_id),
+    );
     return data;
   });
 };

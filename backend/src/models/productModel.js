@@ -124,6 +124,7 @@ export const deleteProduct = async (id) => {
   await updateData(async (data) => {
     data.productos = data.productos.filter((item) => item.id_producto !== id);
     data.calificaciones = data.calificaciones.filter((item) => item.id_producto !== id);
+    data.product_views = (data.product_views || []).filter((item) => item.producto_id !== id);
     return data;
   });
 };

@@ -48,9 +48,67 @@ const validateCategory = async (categoryId) => {
   }
 };
 
-export const getMicrotiendasService = async ({ includePending = false } = {}) => {
+const paginateCollection = (items, page, limit) => {
+  const safePage = Math.max(Number(page || 1), 1);
+  const safeLimit = Math.max(Number(limit || 9), 1);
+  const total = items.length;
+  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: items.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasPreviousPage: safePage > 1,
+      hasNextPage: safePage < totalPages,
+    },
+  };
+};
+
+export const getMicrotiendasService = async ({
+  includePending = false,
+  page,
+  limit,
+  search,
+  categoria,
+} = {}) => {
   const rows = await findAllMicrotiendas({ includePending });
-  return rows.map(sanitizeMicrotienda);
+  const normalizedSearch = String(search || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+  const normalizedCategoria = String(categoria || '').trim().toLowerCase();
+
+  const sanitizedRows = rows
+    .map(sanitizeMicrotienda)
+    .filter((item) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [item.nombre, item.descripcion, item.propietario, item.categoria, item.sectorEconomico]
+          .filter(Boolean)
+          .some((value) =>
+            String(value)
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .includes(normalizedSearch),
+          );
+
+      const matchesCategory =
+        !normalizedCategoria || String(item.categoria || '').trim().toLowerCase() === normalizedCategoria;
+
+      return matchesSearch && matchesCategory;
+    });
+
+  if (page || limit) {
+    return paginateCollection(sanitizedRows, page, limit);
+  }
+
+  return sanitizedRows;
 };
 
 export const getMicrotiendaByIdService = async (id) => {
