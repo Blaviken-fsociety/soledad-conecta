@@ -87,6 +87,35 @@ CREATE TABLE IF NOT EXISTS metrica (
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS microtienda_views (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_microtienda INT NOT NULL,
+    id_usuario INT NULL,
+    duracion_segundos INT DEFAULT 0,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_microtienda) REFERENCES microtienda(id_microtienda),
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    INDEX idx_microtienda_views_microtienda (id_microtienda),
+    INDEX idx_microtienda_views_usuario (id_usuario),
+    INDEX idx_microtienda_views_timestamp (timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS product_views (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_producto INT NOT NULL,
+    id_microtienda INT NOT NULL,
+    id_usuario INT NULL,
+    duracion_segundos INT DEFAULT 0,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
+    FOREIGN KEY (id_microtienda) REFERENCES microtienda(id_microtienda),
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    INDEX idx_product_views_producto (id_producto),
+    INDEX idx_product_views_microtienda (id_microtienda),
+    INDEX idx_product_views_usuario (id_usuario),
+    INDEX idx_product_views_timestamp (timestamp)
+);
+
 INSERT INTO rol (nombre)
 SELECT 'ADMINISTRADOR'
 WHERE NOT EXISTS (

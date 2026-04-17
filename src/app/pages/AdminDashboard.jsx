@@ -23,6 +23,7 @@ import {
   updateCategoryRequest,
   updateUserRequest,
 } from '../utils/api';
+import { AdminMetricsPanel } from './admin/Metricas/AdminMetricsPanel';
 import { clearSession } from '../utils/session.js';
 
 const cardClass =
@@ -961,6 +962,7 @@ export function AdminDashboard() {
         <div className="mb-6 flex flex-wrap gap-2">
           {[
             ['overview', 'Resumen'],
+            ['metrics', 'Métricas'],
             ['pending', 'Aprobaciones Pendientes'],
             ['users', 'Usuarios'],
             ['pqrs', 'PQRs'],
@@ -1067,6 +1069,8 @@ export function AdminDashboard() {
             </div>
           </motion.div>
         ) : null}
+
+        {activeTab === 'metrics' ? <AdminMetricsPanel /> : null}
 
         {activeTab === 'pending' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

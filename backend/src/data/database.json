@@ -490,5 +490,24 @@
       "estado": "COMPLETADO"
     }
   ],
-  "metricas": []
+  "metricas": [],
+  "microtienda_views": [
+    {
+      "id": 1,
+      "microtienda_id": 5,
+      "id_usuario": null,
+      "timestamp": "2026-04-17T16:30:40.767Z",
+      "duracion_segundos": 69
+    }
+  ],
+  "product_views": [
+    {
+      "id": 1,
+      "producto_id": 5,
+      "microtienda_id": 5,
+      "id_usuario": null,
+      "timestamp": "2026-04-17T16:30:52.419Z",
+      "duracion_segundos": 55
+    }
+  ]
 }
