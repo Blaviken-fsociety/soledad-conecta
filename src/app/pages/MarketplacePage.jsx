@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Filter,
   Loader,
@@ -16,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { getCategoriesRequest, getMicrotiendasRequest } from '../utils/api';
+import { getCategoriesRequest, getMarketplaceMicrotiendasRequest } from '../utils/api';
 
 const fallbackBusinessImage =
   'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=1200&q=80';
@@ -37,7 +39,7 @@ const badgeClass =
 const inputClass =
   'h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-background)] pl-12 pr-4 text-base outline-none transition-all duration-200 placeholder:text-[var(--muted-foreground)] focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(255,184,0,0.15)]';
 const filterButtonBase =
-  'rounded-[var(--radius)] px-4 py-2 text-sm font-semibold transition-all duration-200';
+  'inline-flex items-center gap-2 rounded-[var(--radius)] px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50';
 const activeFilterClass = `${filterButtonBase} bg-[var(--accent)] text-[var(--accent-foreground)] hover:-translate-y-px hover:bg-[#E5A600] hover:shadow-[0_4px_12px_rgba(255,184,0,0.3)]`;
 const inactiveFilterClass = `${filterButtonBase} border-2 border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] hover:shadow-[0_4px_12px_rgba(27,58,95,0.2)]`;
 const primaryButtonClass =
@@ -61,6 +63,15 @@ export function MarketplacePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [businesses, setBusinesses] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 9,
+    total: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -71,7 +82,12 @@ export function MarketplacePage() {
       try {
         const [backendCategories, backendBusinesses] = await Promise.all([
           getCategoriesRequest(true),
-          getMicrotiendasRequest(),
+          getMarketplaceMicrotiendasRequest({
+            page,
+            limit: 9,
+            search: searchTerm.trim(),
+            categoria: selectedCategory,
+          }),
         ]);
 
         if (!isMounted) {
@@ -85,7 +101,11 @@ export function MarketplacePage() {
           Icon: categoryIconMap[normalizeText(category.nombre)] || Settings,
         }));
 
-        const formattedBusinesses = (backendBusinesses || []).map((business, index) => ({
+        const rawBusinesses = Array.isArray(backendBusinesses)
+          ? backendBusinesses
+          : backendBusinesses?.items || [];
+
+        const formattedBusinesses = rawBusinesses.map((business, index) => ({
           id: business.id,
           name: business.nombre || `Emprendimiento ${index + 1}`,
           category: business.categoria || 'General',
@@ -100,6 +120,16 @@ export function MarketplacePage() {
 
         setCategories(formattedCategories);
         setBusinesses(formattedBusinesses);
+        setPagination(
+          backendBusinesses?.pagination || {
+            page: 1,
+            limit: 9,
+            total: formattedBusinesses.length,
+            totalPages: 1,
+            hasPreviousPage: false,
+            hasNextPage: false,
+          },
+        );
       } catch (error) {
         console.error('No se pudieron cargar las categorias y microtiendas del marketplace', error);
       } finally {
@@ -114,26 +144,16 @@ export function MarketplacePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [page, searchTerm, selectedCategory]);
 
   const categoryOptions = useMemo(
     () => ['Todos', ...categories.map((category) => category.name)],
     [categories],
   );
 
-  const filteredBusinesses = useMemo(
-    () =>
-      businesses.filter((business) => {
-        const matchesSearch =
-          normalizeText(business.name).includes(normalizeText(searchTerm)) ||
-          normalizeText(business.description).includes(normalizeText(searchTerm)) ||
-          normalizeText(business.owner).includes(normalizeText(searchTerm));
-        const matchesCategory =
-          selectedCategory === 'Todos' || business.category === selectedCategory;
-
-        return matchesSearch && matchesCategory;
-      }),
-    [businesses, searchTerm, selectedCategory],
+  const pageNumbers = useMemo(
+    () => Array.from({ length: pagination.totalPages || 1 }, (_, index) => index + 1),
+    [pagination.totalPages],
   );
 
   return (
@@ -167,7 +187,10 @@ export function MarketplacePage() {
                 className={inputClass}
                 placeholder="Buscar emprendimientos registrados..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setPage(1);
+                }}
               />
             </div>
           </div>
@@ -178,7 +201,10 @@ export function MarketplacePage() {
               {categoryOptions.map((category) => (
                 <button
                   key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setPage(1);
+                  }}
                   className={selectedCategory === category ? activeFilterClass : inactiveFilterClass}
                 >
                   {category}
@@ -192,8 +218,8 @@ export function MarketplacePage() {
       <section className="w-full px-6 py-16 lg:px-8">
         <div className="mb-6 flex w-full items-center justify-between">
           <h3 className="m-0">
-            {filteredBusinesses.length}{' '}
-            {filteredBusinesses.length === 1 ? 'Emprendimiento' : 'Emprendimientos'}
+            {pagination.total}{' '}
+            {pagination.total === 1 ? 'Emprendimiento' : 'Emprendimientos'}
             {selectedCategory !== 'Todos' && ` en ${selectedCategory}`}
           </h3>
         </div>
@@ -203,7 +229,7 @@ export function MarketplacePage() {
             <Loader size={48} className="mx-auto animate-spin" color="var(--accent)" />
             <p className="mt-4 text-[var(--muted-foreground)]">Cargando emprendimientos...</p>
           </div>
-        ) : filteredBusinesses.length === 0 ? (
+        ) : businesses.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -221,6 +247,7 @@ export function MarketplacePage() {
               onClick={() => {
                 setSearchTerm('');
                 setSelectedCategory('Todos');
+                setPage(1);
               }}
               className={primaryButtonClass}
             >
@@ -228,68 +255,101 @@ export function MarketplacePage() {
             </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredBusinesses.map((business, index) => (
-              <motion.div
-                key={business.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.08 }}
-                whileHover={{ y: -8 }}
-              >
-                <Link to={`/negocio/${business.id}`} className="block text-inherit no-underline">
-                  <div className={cardClass}>
-                    <div className="relative overflow-hidden pt-[66.67%]">
-                      <ImageWithFallback
-                        src={business.image}
-                        alt={business.name}
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {businesses.map((business, index) => (
+                <motion.div
+                  key={business.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  whileHover={{ y: -8 }}
+                >
+                  <Link to={`/negocio/${business.id}`} className="block text-inherit no-underline">
+                    <div className={cardClass}>
+                      <div className="relative overflow-hidden pt-[66.67%]">
+                        <ImageWithFallback
+                          src={business.image}
+                          alt={business.name}
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
 
-                      <div className="absolute top-4 right-4">
-                        <span className={badgeClass}>{business.category}</span>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[205px] flex-col p-6">
-                      <h3 className="mb-2 min-h-[56px] text-xl">{business.name}</h3>
-                      <p className="mb-3 min-h-[40px] line-clamp-2 text-sm text-[var(--muted-foreground)]">
-                        {business.description}
-                      </p>
-                      <div className="mb-2 flex items-center gap-2">
-                        <UserRound size={14} color="var(--muted-foreground)" />
-                        <span className="text-sm text-[var(--muted-foreground)]">{business.owner}</span>
-                      </div>
-                      {business.sector ? (
-                        <div className="mb-2 min-h-[20px] text-sm text-[var(--muted-foreground)]">
-                          Sector: {business.sector}
+                        <div className="absolute top-4 right-4">
+                          <span className={badgeClass}>{business.category}</span>
                         </div>
-                      ) : (
-                        <div className="mb-2 min-h-[20px]" />
-                      )}
-                      <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] pt-2">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <Star size={16} fill="var(--accent)" color="var(--accent)" />
-                            <span className="font-semibold">{business.rating.toFixed(1)}</span>
+                      </div>
+                      <div className="flex min-h-[205px] flex-col p-6">
+                        <h3 className="mb-2 min-h-[56px] text-xl">{business.name}</h3>
+                        <p className="mb-3 min-h-[40px] line-clamp-2 text-sm text-[var(--muted-foreground)]">
+                          {business.description}
+                        </p>
+                        <div className="mb-2 flex items-center gap-2">
+                          <UserRound size={14} color="var(--muted-foreground)" />
+                          <span className="text-sm text-[var(--muted-foreground)]">{business.owner}</span>
+                        </div>
+                        {business.sector ? (
+                          <div className="mb-2 min-h-[20px] text-sm text-[var(--muted-foreground)]">
+                            Sector: {business.sector}
                           </div>
-                          <span className="text-sm text-[var(--muted-foreground)]">
-                            ({business.reviews})
-                          </span>
+                        ) : (
+                          <div className="mb-2 min-h-[20px]" />
+                        )}
+                        <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] pt-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Star size={16} fill="var(--accent)" color="var(--accent)" />
+                              <span className="font-semibold">{business.rating.toFixed(1)}</span>
+                            </div>
+                            <span className="text-sm text-[var(--muted-foreground)]">
+                              ({business.reviews})
+                            </span>
+                          </div>
+                          <ExternalLink size={18} color="var(--primary)" />
                         </div>
-                        <ExternalLink size={18} color="var(--primary)" />
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                disabled={!pagination.hasPreviousPage}
+                className={inactiveFilterClass}
+              >
+                <ChevronLeft size={16} />
+                Anterior
+              </button>
+              {pageNumbers.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPage(pageNumber)}
+                  className={page === pageNumber ? activeFilterClass : inactiveFilterClass}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(current + 1, pagination.totalPages || 1))}
+                disabled={!pagination.hasNextPage}
+                className={inactiveFilterClass}
+              >
+                Siguiente
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </>
         )}
       </section>
     </div>

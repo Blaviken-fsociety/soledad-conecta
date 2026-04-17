@@ -29,6 +29,22 @@ export const findRatings = async ({ microtiendaId, productId, includePending = f
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 };
 
+export const findRatingsByOwnerUserId = async (userId, { includePending = true } = {}) => {
+  const data = await readData();
+  const ownedMicrotiendaIds = data.microtiendas
+    .filter((item) => Number(item.id_usuario) === Number(userId))
+    .map((item) => Number(item.id_microtienda));
+
+  return data.calificaciones
+    .filter(
+      (item) =>
+        ownedMicrotiendaIds.includes(Number(item.id_microtienda)) &&
+        (includePending || item.estado_revision === 'APROBADO'),
+    )
+    .map((item) => buildRating(item, data))
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+};
+
 export const findRatingSummaryByMicrotienda = async () => {
   const data = await readData();
 

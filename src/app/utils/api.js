@@ -47,6 +47,17 @@ export const getMicrotiendasRequest = (includePending = false) =>
   includePending
     ? unwrap(api.get('/microtiendas/revision/lista'))
     : unwrap(api.get('/microtiendas'));
+export const getMarketplaceMicrotiendasRequest = ({ page = 1, limit = 9, search = '', categoria = '' } = {}) =>
+  unwrap(
+    api.get('/microtiendas', {
+      params: {
+        page,
+        limit,
+        ...(search ? { search } : {}),
+        ...(categoria && categoria !== 'Todos' ? { categoria } : {}),
+      },
+    }),
+  );
 export const getMicrotiendaByIdRequest = (id) => unwrap(api.get(`/microtiendas/${id}`));
 export const getMyMicrotiendaRequest = () => unwrap(api.get('/microtiendas/mine'));
 export const createMicrotiendaRequest = (payload) => unwrap(api.post('/microtiendas', payload));
@@ -71,6 +82,8 @@ export const getRatingsRequest = (params) =>
   params?.includePending || params?.includePrivate
     ? unwrap(api.get('/calificaciones/revision/lista', { params }))
     : unwrap(api.get('/calificaciones', { params }));
+export const getMyRatingsRequest = ({ page = 1, limit = 10 } = {}) =>
+  unwrap(api.get('/calificaciones/mis-resenas', { params: { page, limit } }));
 export const createRatingRequest = (payload) => unwrap(api.post('/calificaciones', payload));
 export const reviewRatingRequest = (id, payload) =>
   unwrap(api.patch(`/calificaciones/${id}/revision`, payload));

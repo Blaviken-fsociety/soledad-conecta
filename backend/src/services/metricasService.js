@@ -129,6 +129,56 @@ export const getAdminDashboardMetricsService = async () => {
 
 export const getEntrepreneurDashboardMetricsService = async (userId) => {
   const metrics = await getEntrepreneurMetrics(userId);
+  const snapshot = await getAnalyticsSnapshot();
+  const microtiendaId = Number(metrics?.id_microtienda || 0);
+  const approvedProducts = getCollection(snapshot.productos).filter(
+    (item) => Number(item.id_microtienda) === microtiendaId && item.estado && item.estado_revision === 'APROBADO',
+  );
+  const productMap = new Map(approvedProducts.map((item) => [Number(item.id_producto), item]));
+  const productViews = getCollection(snapshot.product_views).filter(
+    (item) => Number(item.microtienda_id) === microtiendaId,
+  );
+  const directViews = getCollection(snapshot.microtienda_views).filter(
+    (item) => Number(item.microtienda_id) === microtiendaId,
+  );
+  const allRatings = getCollection(snapshot.calificaciones).filter(
+    (item) => Number(item.id_microtienda) === microtiendaId,
+  );
+  const approvedRatings = allRatings.filter((item) => item.estado_revision === 'APROBADO');
+  const productRanking = approvedProducts
+    .map((product) => {
+      const productViewsCount = productViews.filter(
+        (view) => Number(view.producto_id) === Number(product.id_producto),
+      ).length;
+
+      return {
+        id: Number(product.id_producto),
+        nombre: product.nombre,
+        vistas: productViewsCount,
+        stock: Number(product.stock || 0),
+      };
+    })
+    .sort((a, b) => b.vistas - a.vistas || a.nombre.localeCompare(b.nombre))
+    .slice(0, 5);
+
+  const chartBuckets = buildPeriodBuckets('weekly');
+  const bucketByKey = new Map(chartBuckets.map((item) => [item.key.slice(0, 10), item]));
+
+  [...directViews, ...productViews].forEach((view) => {
+    const bucket = bucketByKey.get(new Date(view.timestamp).toISOString().slice(0, 10));
+
+    if (!bucket) {
+      return;
+    }
+
+    if ('producto_id' in view) {
+      bucket.productViews += 1;
+    } else {
+      bucket.microtiendaViews += 1;
+    }
+
+    bucket.totalViews += 1;
+  });
 
   return {
     microtiendaId: metrics?.id_microtienda || null,
@@ -137,6 +187,18 @@ export const getEntrepreneurDashboardMetricsService = async (userId) => {
     inventarioTotal: Number(metrics?.inventario_total || 0),
     promedioCalificacion: Number(metrics?.promedio_calificacion || 0),
     totalCalificaciones: Number(metrics?.total_calificaciones || 0),
+    totalVisitasMicrotienda: directViews.length + productViews.length,
+    visitasDirectasMicrotienda: directViews.length,
+    visualizacionesProductos: productViews.length,
+    totalResenasRecibidas: allRatings.length,
+    totalResenasAprobadas: approvedRatings.length,
+    productosMasVistos: productRanking,
+    actividadSemanal: chartBuckets.map((bucket) => ({
+      label: bucket.label,
+      microtiendaViews: bucket.microtiendaViews,
+      productViews: bucket.productViews,
+      totalViews: bucket.totalViews,
+    })),
   };
 };
 

@@ -10,7 +10,13 @@ import {
 
 export const getMicrotiendas = async (request, response, next) => {
   try {
-    const microtiendas = await getMicrotiendasService();
+    const hasPagination = request.query.page || request.query.limit;
+    const microtiendas = await getMicrotiendasService({
+      page: hasPagination ? Number(request.query.page || 1) : undefined,
+      limit: hasPagination ? Number(request.query.limit || 9) : undefined,
+      search: request.query.search,
+      categoria: request.query.categoria,
+    });
 
     response.status(200).json({
       success: true,

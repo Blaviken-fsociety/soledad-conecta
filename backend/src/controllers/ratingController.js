@@ -1,6 +1,7 @@
 import {
   createRatingService,
   deleteRatingService,
+  getEntrepreneurRatingsService,
   getRatingsService,
   getRatingSummaryService,
   reviewRatingService,
@@ -41,6 +42,23 @@ export const getRatingsForReview = async (request, response, next) => {
       microtiendaId: request.query.microtiendaId ? Number(request.query.microtiendaId) : undefined,
       productId: request.query.productId ? Number(request.query.productId) : undefined,
       includePending: true,
+      includePrivate: true,
+    });
+
+    response.status(200).json({
+      success: true,
+      data: ratings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEntrepreneurRatings = async (request, response, next) => {
+  try {
+    const ratings = await getEntrepreneurRatingsService(request.auth, {
+      page: Number(request.query.page || 1),
+      limit: Number(request.query.limit || 10),
       includePrivate: true,
     });
 

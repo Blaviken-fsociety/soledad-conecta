@@ -4,10 +4,12 @@ import {
   createRating,
   deleteRating,
   findRatings,
+  findRatingsByOwnerUserId,
   findRatingById,
   findRatingSummaryByMicrotienda,
   updateRatingReviewStatus,
 } from '../models/ratingModel.js';
+import { findMicrotiendaByUserId } from '../models/microtiendaModel.js';
 import { buildHttpError } from '../utils/httpError.js';
 
 const sanitizeRating = (item, { includePrivate = false } = {}) => ({
@@ -47,6 +49,47 @@ export const getRatingSummaryService = async () => {
 export const getRatingsService = async ({ microtiendaId, productId, includePending = false, includePrivate = false } = {}) => {
   const rows = await findRatings({ microtiendaId, productId, includePending });
   return rows.map((item) => sanitizeRating(item, { includePrivate }));
+};
+
+export const getEntrepreneurRatingsService = async (
+  authUser,
+  { page = 1, limit = 10, includePrivate = true } = {},
+) => {
+  const microtienda = await findMicrotiendaByUserId(authUser.id, { includeInactive: true });
+
+  if (!microtienda) {
+    return {
+      items: [],
+      pagination: {
+        page: 1,
+        limit,
+        total: 0,
+        totalPages: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    };
+  }
+
+  const rows = await findRatingsByOwnerUserId(authUser.id, { includePending: true });
+  const sanitizedRows = rows.map((item) => sanitizeRating(item, { includePrivate }));
+  const safePage = Math.max(Number(page || 1), 1);
+  const safeLimit = Math.max(Number(limit || 10), 1);
+  const total = sanitizedRows.length;
+  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: sanitizedRows.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasPreviousPage: safePage > 1,
+      hasNextPage: safePage < totalPages,
+    },
+  };
 };
 
 export const createRatingService = async ({

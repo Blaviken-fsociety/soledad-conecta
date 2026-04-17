@@ -9,6 +9,8 @@ import {
 import { findMicrotiendaById, findMicrotiendaByUserId } from '../models/microtiendaModel.js';
 import { buildHttpError } from '../utils/httpError.js';
 
+const MAX_PRODUCT_IMAGES = 5;
+
 const sanitizeProduct = (product) => ({
   id: product.id_producto,
   nombre: product.nombre,
@@ -45,6 +47,20 @@ const validateCategory = async (categoryId) => {
   if (!category || !category.estado) {
     throw buildHttpError('La categoria seleccionada no es valida', 400);
   }
+};
+
+const normalizeProductImages = (payloadImages, fallbackImage = '') => {
+  const normalizedImages = Array.isArray(payloadImages)
+    ? payloadImages.filter((image) => typeof image === 'string' && image.trim())
+    : fallbackImage
+      ? [fallbackImage]
+      : [];
+
+  if (normalizedImages.length > MAX_PRODUCT_IMAGES) {
+    throw buildHttpError(`Solo puedes registrar hasta ${MAX_PRODUCT_IMAGES} imagenes por producto`, 400);
+  }
+
+  return normalizedImages;
 };
 
 const ensureOwnerMicrotienda = async (userId) => {
@@ -84,12 +100,12 @@ export const createProductService = async (authUser, payload) => {
   await validateCategory(categoryId);
 
   const createdProduct = await createProduct({
+    imagenes: normalizeProductImages(payload.imagenes, payload.imagenUrl || ''),
     nombre: payload.nombre.trim(),
     descripcion: payload.descripcion?.trim() || null,
     precio: Number(payload.precio || 0),
     stock: Number(payload.stock || 0),
     imagenUrl: payload.imagenUrl || '',
-    imagenes: Array.isArray(payload.imagenes) ? payload.imagenes.filter(Boolean) : [],
     estado: payload.estado ?? true,
     estadoRevision: 'PENDIENTE',
     observacionRevision: '',
@@ -116,20 +132,24 @@ export const updateProductService = async (authUser, productId, payload) => {
 
   const categoryId = parseId(payload.idCategoria, 'categoria');
   await validateCategory(categoryId);
+  const normalizedImages = normalizeProductImages(
+    Array.isArray(payload.imagenes) && payload.imagenes.length
+      ? payload.imagenes
+      : Array.isArray(product.imagenes) && product.imagenes.length
+        ? product.imagenes
+        : product.imagen_url
+          ? [product.imagen_url]
+          : [],
+    payload.imagenUrl || product.imagen_url || '',
+  );
 
   const updatedProduct = await updateProduct(numericProductId, {
     nombre: payload.nombre?.trim() || product.nombre,
     descripcion: payload.descripcion?.trim() || null,
     precio: Number(payload.precio ?? product.precio ?? 0),
     stock: Number(payload.stock ?? product.stock ?? 0),
-    imagenUrl: payload.imagenUrl || product.imagen_url || '',
-    imagenes: Array.isArray(payload.imagenes) && payload.imagenes.length
-      ? payload.imagenes.filter(Boolean)
-      : Array.isArray(product.imagenes) && product.imagenes.length
-        ? product.imagenes
-        : product.imagen_url
-          ? [product.imagen_url]
-          : [],
+    imagenUrl: normalizedImages[0] || payload.imagenUrl || product.imagen_url || '',
+    imagenes: normalizedImages,
     estado: payload.estado ?? product.estado ?? true,
     estadoRevision: 'PENDIENTE',
     observacionRevision: '',

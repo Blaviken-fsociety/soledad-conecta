@@ -1,24 +1,26 @@
 # Soledad Conecta
 
-Despliegue en linea:
+Soledad Conecta es una plataforma web para visibilizar emprendimientos locales mediante microtiendas digitales, catálogo de productos, reseñas, PQRS y paneles de gestión para administrador y emprendedores.
 
-- [Soledad Conecta en Netlify](https://soledad-conecta.netlify.app/)
+Despliegue de referencia:
 
-Soledad Conecta es una vitrina digital para emprendimientos locales. El proyecto combina un frontend en React + Vite con un backend en Express, e integra autenticacion, postulacion de emprendedores, gestion administrativa, microtiendas, productos, PQRS, calificaciones y metricas.
+- [Frontend en Netlify](https://soledad-conecta.netlify.app/)
 
-## Resumen del sistema
+## Estado actual
 
-Actualmente el proyecto incluye:
+El repositorio ya incluye:
 
-- portal publico con buscador y detalle de microtiendas
-- login por roles
-- postulacion de emprendedores
-- panel administrador
-- panel emprendedor
-- gestion de categorias, microtiendas y productos
-- PQRS
-- calificaciones y comentarios
-- metricas institucionales
+- portal público con marketplace y detalle de microtiendas
+- autenticación por roles
+- panel del administrador
+- panel del emprendedor
+- métricas institucionales para admin
+- métricas individuales para emprendedores
+- reseñas visibles desde microtienda y desde el perfil del emprendedor
+- paginación clásica del marketplace
+- galería de hasta 5 imágenes por producto
+- PQRS y flujo de revisión administrativa
+- generación de reportes analíticos en CSV y Excel
 
 ## Stack principal
 
@@ -28,27 +30,88 @@ Actualmente el proyecto incluye:
 - Vite
 - React Router
 - Axios
+- Recharts
+- Tailwind CSS
 
 ### Backend
 
 - Node.js
 - Express
-- persistencia actual en JSON para demostracion
+- persistencia actual en JSON para demo
+- esquema MySQL documentado para despliegues futuros
 
-## Rutas principales
+## Rutas principales del frontend
 
-- `/` portal publico
-- `/login` acceso y postulacion
-- `/panel-admin` panel del administrador
-- `/panel-emprendedor` panel del emprendedor
-- `/interaccion` contacto y PQR's
-- `/calificaciones` opiniones y valoraciones
-- `/microtiendas/:id` detalle publico de una tienda
+- `/` inicio público
+- `/marketplace` vitrina paginada de microtiendas
+- `/negocio/:id` detalle de microtienda y vista previa de productos
+- `/comentarios` módulo público de reseñas
+- `/contacto` contacto y PQRS
+- `/login` acceso y postulaciones
+- `/dashboard` panel del emprendedor
+- `/admin` panel del administrador
 
-## Credenciales demo
+## Funcionalidades destacadas
 
-- admin: `admin@demo.com` / `123456`
-- emprendedor demo: `emprendedor@demo.com` / `123456`
+### Administrador
+
+- gestión de usuarios y solicitudes de emprendedores
+- gestión de categorías
+- revisión de microtiendas, productos y reseñas
+- consulta y atención de PQRS
+- tablero `Admin -> Métricas` con KPIs, donut, líneas, rankings y exportación
+
+### Emprendedor
+
+- creación y edición de su microtienda
+- CRUD de productos
+- carga de hasta 5 imágenes por producto
+- vista previa enriquecida de producto
+- panel propio de métricas con visitas, productos más vistos y promedio de calificación
+- sección paginada de reseñas dentro del perfil
+
+### Marketplace y experiencia pública
+
+- búsqueda por texto
+- filtro por categoría
+- paginación de 9 microtiendas por página
+- vista previa de producto con imagen principal, miniaturas, precio, stock y nombre de la microtienda
+- contadores automáticos de visitas a microtiendas y productos
+
+## API principal
+
+Base URL local:
+
+```text
+http://localhost:4000/api
+```
+
+Módulos disponibles:
+
+- `/auth`
+- `/usuarios`
+- `/categorias`
+- `/microtiendas`
+- `/productos`
+- `/calificaciones`
+- `/pqrs`
+- `/metricas`
+
+## Persistencia actual
+
+El proyecto funciona hoy con persistencia JSON para la demo:
+
+- `backend/src/data/database.json`
+
+Además, el repositorio deja documentado el esquema relacional en:
+
+- `backend/sql/schema.sql`
+
+Ese esquema ya contempla:
+
+- `microtienda_views`
+- `product_views`
+- `producto_imagen`
 
 ## Variables de entorno
 
@@ -67,7 +130,7 @@ AUTH_TOKEN_SECRET=coloca-un-secreto-seguro-aqui
 DATA_FILE=src/data/database.json
 ```
 
-## Ejecucion local
+## Ejecución local
 
 ### Frontend
 
@@ -84,35 +147,19 @@ npm install
 npm run dev
 ```
 
-## Despliegue
+## Credenciales demo
 
-Configuracion recomendada:
+- admin: `admin@demo.com` / `123456`
+- emprendedor demo: `emprendedor@demo.com` / `1234567`
 
-- frontend en Netlify
-- backend en Railway
-- volumen persistente en Railway para el archivo JSON
+## Documentación
 
-Resumen rapido:
+- guía técnica completa: `MANUAL-TECNICO.md`
+- guía de despliegue: `MANUAL-DESPLIEGUE.md`
+- documentación del backend: `backend/README.md`
 
-1. desplegar primero el backend en Railway
-2. configurar `CLIENT_URL` en backend
-3. configurar `VITE_API_URL` en Netlify
-4. desplegar frontend
+## Notas importantes
 
-Guia completa:
-
-- [MANUAL-DESPLIEGUE.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-DESPLIEGUE.md)
-
-## Documentacion
-
-- manual tecnico completo: [MANUAL-TECNICO.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-TECNICO.md)
-- manual de despliegue: [MANUAL-DESPLIEGUE.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\MANUAL-DESPLIEGUE.md)
-- backend: [backend/README.md](C:\Users\JULIO\OneDrive\Desktop\soledad-conecta\backend\README.md)
-
-## Nota
-
-La documentacion extensa se mantiene separada a proposito:
-
-- `README.md` como entrada rapida al proyecto
-- `MANUAL-TECNICO.md` como referencia funcional y arquitectonica
-- `MANUAL-DESPLIEGUE.md` como guia operativa de publicacion
+- los datos demo visibles en producción se limpiaron para evitar microtiendas de prueba como `ccerdos`, `example` o `tienda demo`
+- el backend mantiene compatibilidad con la arquitectura por capas existente
+- la persistencia en JSON es útil para demo, pero MySQL sigue siendo la ruta recomendada para un entorno institucional

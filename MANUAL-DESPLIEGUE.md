@@ -1,16 +1,16 @@
 # Manual de Despliegue
 
-## Soledad Conecta con Netlify y Railway
+## Soledad Conecta en Netlify y Railway
 
-Este manual deja el despliegue de la demo con:
+Este manual describe el despliegue recomendado del sistema actual:
 
 - frontend en Netlify
 - backend en Railway
-- persistencia JSON usando un volumen en Railway
+- persistencia JSON usando volumen en Railway
 
-## 1. Antes de desplegar
+## 1. Requisitos previos
 
-Verifica que el proyecto ya funcione localmente:
+Antes de desplegar, valida el proyecto en local.
 
 ### Frontend
 
@@ -27,21 +27,15 @@ npm install
 npm run dev
 ```
 
-## 2. Despliegue del backend en Railway
+## 2. Variables necesarias
 
-### 2.1 Crear el servicio
+### Frontend
 
-1. entra a Railway
-2. crea un proyecto nuevo desde GitHub
-3. selecciona este repositorio
-4. abre el servicio importado
-5. en `Settings`, configura `Root Directory` con `backend`
+```env
+VITE_API_URL=https://TU-BACKEND.up.railway.app/api
+```
 
-Esto aplica al caso de monorepo aislado, que es justamente la estructura de este proyecto.
-
-### 2.2 Variables del backend
-
-En Railway agrega estas variables:
+### Backend
 
 ```env
 PORT=4000
@@ -50,107 +44,128 @@ AUTH_TOKEN_SECRET=un-secreto-largo-y-propio
 DATA_FILE=storage/database.json
 ```
 
-Nota:
+## 3. Despliegue del backend en Railway
 
-- `CLIENT_URL` debe ser la URL final de Netlify
-- `DATA_FILE=storage/database.json` funciona bien si el volumen se monta en `/app/storage`
+### 3.1 Crear el servicio
 
-### 2.3 Crear volumen para persistencia
+1. Importa el repositorio desde GitHub.
+2. Crea un servicio nuevo usando la carpeta `backend` como `Root Directory`.
+3. Usa `npm start` como comando de inicio.
 
-Para no perder el JSON en cada redeploy:
+### 3.2 Configurar persistencia
 
-1. en Railway, crea un `Volume`
-2. conéctalo al servicio backend
-3. usa como `Mount Path` esta ruta:
+Para conservar la data JSON entre redeploys:
+
+1. Crea un volumen en Railway.
+2. Conéctalo al servicio backend.
+3. Usa como `Mount Path`:
 
 ```text
 /app/storage
 ```
 
-Con eso, el archivo real quedará persistido en:
+Con esa configuración, `DATA_FILE=storage/database.json` quedará persistido.
 
-```text
-/app/storage/database.json
-```
+### 3.3 Verificación rápida del backend
 
-Como el backend ya usa `DATA_FILE=storage/database.json`, la aplicación lo resolverá correctamente dentro de `/app`.
+Prueba estos endpoints una vez desplegado:
 
-### 2.4 Comando de inicio
+- `GET /api/microtiendas`
+- `GET /api/categorias`
+- `GET /api/metricas/publicas`
 
-El backend ya está listo para arrancar con:
+## 4. Despliegue del frontend en Netlify
 
-```bash
-npm start
-```
+### 4.1 Crear el sitio
 
-Eso sale de [backend/package.json](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\backend\package.json).
-
-### 2.5 Probar el backend desplegado
-
-Cuando Railway publique el servicio, abre:
-
-```text
-https://TU-BACKEND.up.railway.app/api/microtiendas
-```
-
-Si responde JSON, el backend ya está arriba.
-
-## 3. Despliegue del frontend en Netlify
-
-### 3.1 Crear sitio
-
-1. entra a Netlify
-2. importa el repositorio desde GitHub
-3. usa esta configuracion:
+Usa esta configuración:
 
 ```text
 Build command: npm run build
 Publish directory: dist
 ```
 
-Eso ya coincide con [netlify.toml](C:\Users\DarkVigore\Documents\GitHub\soledad-conecta\netlify.toml).
+### 4.2 Variable del frontend
 
-### 3.2 Variable del frontend
-
-Agrega esta variable en Netlify:
+Configura:
 
 ```env
 VITE_API_URL=https://TU-BACKEND.up.railway.app/api
 ```
 
-## 4. Orden recomendado de despliegue
+## 5. Orden recomendado
 
-1. despliega primero Railway
-2. copia la URL publica del backend
-3. configura `VITE_API_URL` en Netlify
-4. despliega Netlify
-5. vuelve a Railway y actualiza `CLIENT_URL` con la URL final de Netlify
+1. Despliega el backend en Railway.
+2. Confirma que responde correctamente.
+3. Copia la URL pública del backend.
+4. Configura `VITE_API_URL` en Netlify.
+5. Despliega el frontend.
+6. Vuelve a Railway y ajusta `CLIENT_URL` con la URL final del frontend.
 
-## 5. Verificacion final
+## 6. Checklist funcional posterior al despliegue
 
-Cuando ambos estén arriba, prueba:
+Valida al menos lo siguiente:
 
-1. abrir el home
-2. entrar al login
-3. enviar una solicitud de emprendedor
-4. entrar como admin
-5. aprobar la solicitud
-6. iniciar sesion como emprendedor
-7. cambiar la contrasena en primer acceso
-8. crear microtienda
-9. crear producto
-10. aprobarlo desde admin
+### Portal público
 
-## 6. Notas importantes para demo
+- carga del home
+- navegación al marketplace
+- paginación de 9 microtiendas por página
+- apertura del detalle de negocio
+- apertura de la vista previa de producto con galería
 
-- el volumen de Railway es importante si no quieres perder datos
-- la persistencia sigue siendo un JSON, no una base de datos real
-- las imagenes en base64 hacen crecer el archivo rapidamente
-- las contrasenas visibles en JSON son solo para demo
+### Emprendedor
 
-## 7. Fuentes oficiales
+- login correcto
+- acceso a `/dashboard`
+- consulta de métricas individuales
+- visualización paginada de reseñas
+- creación y edición de productos con hasta 5 imágenes
 
-- [Railway monorepos](https://docs.railway.com/guides/monorepo)
-- [Railway volumes](https://docs.railway.com/develop/volumes)
-- [Netlify environment variables](https://docs.netlify.com/environment-variables/get-started/)
-- [Netlify redirects and rewrites](https://docs.netlify.com/routing/redirects/)
+### Administrador
+
+- login correcto
+- acceso a `/admin`
+- consulta de `Admin -> Métricas`
+- visualización de KPIs y gráficos
+- exportación de reportes CSV y Excel
+
+## 7. Notas operativas
+
+- el sistema actual usa JSON como persistencia activa
+- el archivo crecerá con imágenes y con eventos analíticos
+- para producción institucional conviene migrar a MySQL y almacenamiento externo
+- el esquema `backend/sql/schema.sql` ya documenta la estructura objetivo
+
+## 8. Rutas y módulos relevantes para operación
+
+Frontend:
+
+- `/`
+- `/marketplace`
+- `/negocio/:id`
+- `/comentarios`
+- `/contacto`
+- `/login`
+- `/dashboard`
+- `/admin`
+
+API:
+
+- `/api/auth`
+- `/api/usuarios`
+- `/api/categorias`
+- `/api/microtiendas`
+- `/api/productos`
+- `/api/calificaciones`
+- `/api/pqrs`
+- `/api/metricas`
+
+## 9. Datos demo
+
+Se recomienda desplegar con la base limpia que ya trae el repositorio actualizado. Los registros demo no institucionales como `ccerdos`, `example` y `tienda demo` fueron eliminados.
+
+## 10. Fuentes útiles
+
+- [Netlify Docs](https://docs.netlify.com/)
+- [Railway Docs](https://docs.railway.com/)

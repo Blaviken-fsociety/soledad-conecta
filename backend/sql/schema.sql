@@ -54,6 +54,17 @@ CREATE TABLE IF NOT EXISTS producto (
     FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
 );
 
+CREATE TABLE IF NOT EXISTS producto_imagen (
+    id_producto_imagen INT AUTO_INCREMENT PRIMARY KEY,
+    id_producto INT NOT NULL,
+    imagen_url TEXT NOT NULL,
+    orden INT DEFAULT 1,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
+    INDEX idx_producto_imagen_producto (id_producto),
+    INDEX idx_producto_imagen_orden (orden)
+);
+
 CREATE TABLE IF NOT EXISTS calificacion (
     id_calificacion INT AUTO_INCREMENT PRIMARY KEY,
     puntuacion INT CHECK (puntuacion BETWEEN 1 AND 5),
@@ -180,20 +191,3 @@ WHERE r.nombre = 'EMPRENDEDOR'
       SELECT 1 FROM usuario WHERE correo = 'emprendedor@demo.com'
   );
 
-INSERT INTO microtienda (nombre, descripcion, sector_economico, whatsapp, id_usuario, id_categoria)
-SELECT 'Tienda Demo', 'Venta de productos de prueba', 'Comercio', '3001234567', u.id_usuario, c.id_categoria
-FROM usuario u
-JOIN categoria c ON c.nombre = 'Moda'
-WHERE u.correo = 'emprendedor@demo.com'
-  AND NOT EXISTS (
-      SELECT 1 FROM microtienda WHERE nombre = 'Tienda Demo'
-  );
-
-INSERT INTO producto (nombre, descripcion, precio, stock, id_microtienda, id_categoria)
-SELECT 'Producto Demo', 'Descripcion de prueba', 50000, 10, m.id_microtienda, c.id_categoria
-FROM microtienda m
-JOIN categoria c ON c.nombre = 'Moda'
-WHERE m.nombre = 'Tienda Demo'
-  AND NOT EXISTS (
-      SELECT 1 FROM producto WHERE nombre = 'Producto Demo'
-  );
