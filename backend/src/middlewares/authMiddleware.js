@@ -57,6 +57,48 @@ export const requireAuth = async (request, _response, next) => {
   }
 };
 
+export const optionalAuth = async (request, _response, next) => {
+  try {
+    const token = getBearerToken(request.headers.authorization);
+
+    if (!token) {
+      request.auth = null;
+      next();
+      return;
+    }
+
+    const tokenPayload = verifyAuthToken(token);
+
+    if (!tokenPayload?.id) {
+      request.auth = null;
+      next();
+      return;
+    }
+
+    const user = await findUserById(tokenPayload.id);
+
+    if (!user || !user.estado) {
+      request.auth = null;
+      next();
+      return;
+    }
+
+    request.auth = {
+      id: user.id_usuario,
+      nombre: user.nombre,
+      correo: user.correo,
+      rol: normalizeRole(user.rol_nombre),
+      rolNombre: user.rol_nombre,
+      estado: user.estado,
+    };
+
+    next();
+  } catch (_error) {
+    request.auth = null;
+    next();
+  }
+};
+
 export const requireRole = (role) => {
   return (request, _response, next) => {
     if (!request.auth || request.auth.rol !== role) {

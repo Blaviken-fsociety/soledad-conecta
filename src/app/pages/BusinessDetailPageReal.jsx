@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ChevronLeft,
@@ -22,6 +22,12 @@ import {
   getProductsRequest,
   getRatingsRequest,
 } from '../utils/api';
+import {
+  registerMicrotiendaStay,
+  registerProductStay,
+  trackMicrotiendaVisit,
+  trackProductVisit,
+} from '../services/metricasService';
 
 const cardClass =
   'rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
@@ -75,6 +81,8 @@ export function BusinessDetailPageReal() {
   const [products, setProducts] = useState([]);
   const [allRatings, setAllRatings] = useState([]);
   const [recentReviews, setRecentReviews] = useState([]);
+  const microtiendaViewRef = useRef({ viewId: null, startedAt: 0 });
+  const productViewSessionsRef = useRef({});
 
   useEffect(() => {
     let isMounted = true;
@@ -123,6 +131,59 @@ export function BusinessDetailPageReal() {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const startedAt = Date.now();
+    microtiendaViewRef.current = { viewId: null, startedAt };
+
+    const registerVisit = async () => {
+      try {
+        const response = await trackMicrotiendaVisit(Number(id));
+
+        if (isMounted) {
+          microtiendaViewRef.current = {
+            viewId: response?.id || null,
+            startedAt,
+          };
+        }
+      } catch (error) {
+        console.error('No se pudo registrar la visita de la microtienda', error);
+      }
+    };
+
+    registerVisit();
+
+    return () => {
+      isMounted = false;
+      const session = microtiendaViewRef.current;
+
+      if (session?.viewId) {
+        const durationSeconds = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
+        registerMicrotiendaStay(session.viewId, durationSeconds).catch((error) => {
+          console.error('No se pudo registrar la permanencia en la microtienda', error);
+        });
+      }
+    };
+  }, [id]);
+
+  useEffect(() => {
+    return () => {
+      Object.keys(productViewSessionsRef.current).forEach((productId) => {
+        const session = productViewSessionsRef.current[productId];
+
+        if (!session?.viewId || !session?.startedAt) {
+          return;
+        }
+
+        const durationSeconds = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
+
+        registerProductStay(session.viewId, durationSeconds).catch((error) => {
+          console.error('No se pudo registrar la permanencia del producto', error);
+        });
+      });
+    };
+  }, []);
 
   const formatPrice = (price) =>
     new Intl.NumberFormat('es-CO', {
@@ -198,12 +259,49 @@ export function BusinessDetailPageReal() {
     setReviewSuccess('');
   };
 
-  const openProductPreview = (product) => {
+  const finalizeProductSession = (productId) => {
+    const session = productViewSessionsRef.current[productId];
+
+    if (!session?.viewId || !session?.startedAt) {
+      return;
+    }
+
+    const durationSeconds = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
+
+    registerProductStay(session.viewId, durationSeconds).catch((error) => {
+      console.error('No se pudo registrar la permanencia del producto', error);
+    });
+
+    delete productViewSessionsRef.current[productId];
+  };
+
+  const openProductPreview = async (product) => {
     setPreviewProduct(product);
     setPreviewProductImageIndex(0);
+    
+    try {
+      const response = await trackProductVisit({
+        productId: Number(product.id),
+        microtiendaId: Number(business?.id || id),
+      });
+
+      productViewSessionsRef.current = {
+        ...productViewSessionsRef.current,
+        [product.id]: {
+          viewId: response?.id || null,
+          startedAt: Date.now(),
+        },
+      };
+    } catch (error) {
+      console.error('No se pudo registrar la visita del producto', error);
+    }
   };
 
   const closeProductPreview = () => {
+    if (previewProduct?.id) {
+      finalizeProductSession(previewProduct.id);
+    }
+
     setPreviewProduct(null);
     setPreviewProductImageIndex(0);
   };
@@ -652,6 +750,13 @@ export function BusinessDetailPageReal() {
                       {previewProduct.stock}
                     </span>
                   </div>
+                </div>
+
+                <div className="mb-5 rounded-[var(--radius)] border border-[var(--border)] bg-[rgba(27,58,95,0.04)] p-4">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    Microtienda
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">{business.nombre}</span>
                 </div>
 
                 <div className="mt-auto flex flex-wrap justify-end gap-3">

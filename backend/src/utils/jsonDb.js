@@ -18,6 +18,8 @@ const createEmptyDb = () => ({
   calificaciones: [],
   pqrs: [],
   metricas: [],
+  microtienda_views: [],
+  product_views: [],
 });
 
 const isDatabaseEmpty = (data) => {
