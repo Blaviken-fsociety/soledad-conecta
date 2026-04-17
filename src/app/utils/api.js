@@ -31,6 +31,8 @@ export const getUsersRequest = () => unwrap(api.get('/usuarios'));
 export const createUserRequest = (userData) => unwrap(api.post('/usuarios', userData));
 export const createEntrepreneurRequest = (userData) =>
   unwrap(api.post('/usuarios/solicitudes-emprendedor', userData));
+export const createPasswordResetRequest = (userData) =>
+  unwrap(api.post('/usuarios/solicitudes-cambio-password', userData));
 export const updateUserRequest = (id, userData) => unwrap(api.put(`/usuarios/${id}`, userData));
 export const deleteUserRequest = (id) => unwrap(api.delete(`/usuarios/${id}`));
 export const changeMyPasswordRequest = (payload) => unwrap(api.patch('/usuarios/me/password', payload));

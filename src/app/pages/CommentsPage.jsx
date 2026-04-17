@@ -1,10 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Star, Send, Calendar, Store, User, CreditCard, Phone } from 'lucide-react';
+import { Star, Send, Calendar, Store, User, CreditCard, Phone, ShoppingBag } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 
 import {
   createRatingRequest,
   getMicrotiendasRequest,
+  getProductsRequest,
   getRatingsRequest,
   getRatingsSummaryRequest,
 } from '../utils/api';
@@ -26,6 +28,7 @@ const alertBaseClass = 'rounded-[var(--radius)] border px-4 py-3 text-sm';
 
 const initialFormData = {
   idMicrotienda: '',
+  idProducto: '',
   nombreVisitante: '',
   tipoDocumento: 'CC',
   numeroDocumento: '',
@@ -54,9 +57,12 @@ function TextField({ id, label, value, onChange, placeholder, type = 'text', req
 }
 
 export function CommentsPage() {
+  const [searchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
+  const [selectedBusinessFilter, setSelectedBusinessFilter] = useState('');
   const [microstores, setMicrostores] = useState([]);
+  const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,13 +77,15 @@ export function CommentsPage() {
     setError('');
 
     try {
-      const [microstoresResponse, reviewsResponse, summaryResponse] = await Promise.all([
+      const [microstoresResponse, productsResponse, reviewsResponse, summaryResponse] = await Promise.all([
         getMicrotiendasRequest(),
+        getProductsRequest(),
         getRatingsRequest(),
         getRatingsSummaryRequest(),
       ]);
 
       setMicrostores(Array.isArray(microstoresResponse) ? microstoresResponse : []);
+      setProducts(Array.isArray(productsResponse) ? productsResponse : []);
       setReviews(Array.isArray(reviewsResponse) ? reviewsResponse : []);
       setSummary(Array.isArray(summaryResponse) ? summaryResponse : []);
     } catch (requestError) {
@@ -91,20 +99,51 @@ export function CommentsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const microtiendaId = searchParams.get('microtiendaId') || '';
+    const productoId = searchParams.get('productoId') || '';
+
+    if (microtiendaId || productoId) {
+      setShowForm(true);
+      setFormData((current) => ({
+        ...current,
+        idMicrotienda: microtiendaId,
+        idProducto: productoId,
+      }));
+    }
+  }, [searchParams]);
+
   const reviewsWithBusinessData = useMemo(() => {
     return reviews.map((review) => {
       const store = microstores.find((item) => Number(item.id) === Number(review.microtiendaId));
+      const product = products.find((item) => Number(item.id) === Number(review.productoId));
       const storeSummary = summary.find((item) => Number(item.microtiendaId) === Number(review.microtiendaId));
 
       return {
         ...review,
         businessName: review.microtienda || store?.nombre || 'Emprendimiento local',
         businessCategory: store?.categoria || 'Sin categoría',
+        productName: review.producto || product?.nombre || '',
         average: storeSummary?.promedio || 0,
         totalReviews: storeSummary?.totalCalificaciones || 0,
       };
     });
-  }, [microstores, reviews, summary]);
+  }, [microstores, products, reviews, summary]);
+
+  const filteredProducts = useMemo(
+    () => products.filter((product) => Number(product.microtiendaId) === Number(formData.idMicrotienda)),
+    [formData.idMicrotienda, products],
+  );
+
+  const filteredReviews = useMemo(() => {
+    if (!selectedBusinessFilter) {
+      return reviewsWithBusinessData;
+    }
+
+    return reviewsWithBusinessData.filter(
+      (review) => Number(review.microtiendaId) === Number(selectedBusinessFilter),
+    );
+  }, [reviewsWithBusinessData, selectedBusinessFilter]);
 
   const overallAverage = useMemo(() => {
     if (!reviewsWithBusinessData.length) return '0.0';
@@ -134,6 +173,7 @@ export function CommentsPage() {
         puntuacion: formData.puntuacion,
         comentario: formData.comentario.trim(),
         idMicrotienda: Number(formData.idMicrotienda),
+        idProducto: formData.idProducto ? Number(formData.idProducto) : null,
       });
 
       setSubmitSuccess(
@@ -227,14 +267,32 @@ export function CommentsPage() {
             </div>
           </motion.div>
 
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2>Reseñas recientes</h2>
-            {!showForm ? (
-              <button onClick={() => setShowForm(true)} className={accentButtonClass}>
-                <Star size={18} />
-                Escribir reseña
-              </button>
-            ) : null}
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2>Reseñas recientes</h2>
+              {!showForm ? (
+                <button onClick={() => setShowForm(true)} className={accentButtonClass}>
+                  <Star size={18} />
+                  Escribir reseña
+                </button>
+              ) : null}
+            </div>
+
+            <div className="max-w-[420px]">
+              <label className={labelClass}>Filtrar por emprendimiento</label>
+              <select
+                className={fieldClass}
+                value={selectedBusinessFilter}
+                onChange={(event) => setSelectedBusinessFilter(event.target.value)}
+              >
+                <option value="">Todos los emprendimientos</option>
+                {microstores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {submitSuccess ? (
@@ -257,13 +315,32 @@ export function CommentsPage() {
                     <select
                       className={fieldClass}
                       value={formData.idMicrotienda}
-                      onChange={(e) => setFormData({ ...formData, idMicrotienda: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, idMicrotienda: e.target.value, idProducto: '' })}
                       required
                     >
                       <option value="">Selecciona una opción</option>
                       {microstores.map((store) => (
                         <option key={store.id} value={store.id}>
                           {store.nombre} · {store.categoria || 'Sin categoría'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Selecciona el producto</label>
+                    <select
+                      className={fieldClass}
+                      value={formData.idProducto}
+                      onChange={(e) => setFormData({ ...formData, idProducto: e.target.value })}
+                      disabled={!formData.idMicrotienda}
+                    >
+                      <option value="">
+                        {formData.idMicrotienda ? 'Selecciona un producto' : 'Selecciona primero un emprendimiento'}
+                      </option>
+                      {filteredProducts.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.nombre}
                         </option>
                       ))}
                     </select>
@@ -370,9 +447,9 @@ export function CommentsPage() {
             <div className={cardClass}>
               <p className="mb-0 text-[var(--muted-foreground)]">Cargando comentarios y calificaciones...</p>
             </div>
-          ) : reviewsWithBusinessData.length ? (
+          ) : filteredReviews.length ? (
             <div className="flex flex-col gap-3">
-              {reviewsWithBusinessData.map((review, index) => (
+              {filteredReviews.map((review, index) => (
                 <motion.div
                   key={review.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -385,6 +462,7 @@ export function CommentsPage() {
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                           <h4 className="m-0 text-lg">{review.nombreVisitante || 'Visitante'}</h4>
                           <span className={badgeClass}>{review.businessCategory}</span>
+                          {review.productName ? <span className={badgeClass}>{review.productName}</span> : null}
                         </div>
                         <p className="mb-2 text-sm text-[var(--muted-foreground)]">{review.businessName}</p>
                         <div className="flex items-center gap-1">
@@ -415,6 +493,12 @@ export function CommentsPage() {
                         <Store size={14} />
                         {review.businessName}
                       </span>
+                      {review.productName ? (
+                        <span className="inline-flex items-center gap-2">
+                          <ShoppingBag size={14} />
+                          {review.productName}
+                        </span>
+                      ) : null}
                       <span className="inline-flex items-center gap-2">
                         <Star size={14} color="var(--accent)" fill="var(--accent)" />
                         Promedio actual: {Number(review.average || 0).toFixed(1)}
@@ -428,7 +512,9 @@ export function CommentsPage() {
           ) : (
             <div className={cardClass}>
               <p className="mb-0 text-[var(--muted-foreground)]">
-                Aún no hay reseñas aprobadas para mostrar. Puedes ser la primera persona en compartir una experiencia.
+                {selectedBusinessFilter
+                  ? 'Este emprendimiento aún no tiene reseñas aprobadas para mostrar.'
+                  : 'Aún no hay reseñas aprobadas para mostrar. Puedes ser la primera persona en compartir una experiencia.'}
               </p>
             </div>
           )}

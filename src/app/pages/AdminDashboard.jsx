@@ -1,6 +1,6 @@
 ﻿import { Fragment, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Users, Store, MessageSquare, CheckCircle, XCircle, Eye, Award, Pencil, Trash2, Plus } from 'lucide-react';
+import { Users, Store, MessageSquare, CheckCircle, XCircle, Eye, Award, Pencil, Trash2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import {
   createCategoryRequest,
@@ -84,6 +84,34 @@ const formatPqrsType = (type) => {
   return type || 'Sin tipo';
 };
 
+const PASSWORD_RESET_SUBJECT = 'Solicitud de cambio de password';
+const LEGACY_PASSWORD_RESET_SUBJECT = 'Solicitud de cambio de contraseña';
+
+const isPasswordResetRequest = (item) =>
+  item?.tipo === 'PETICION' &&
+  [PASSWORD_RESET_SUBJECT, LEGACY_PASSWORD_RESET_SUBJECT].includes(item?.asunto);
+
+const parsePasswordResetMessage = (message = '') => {
+  const lines = String(message).split('\n').map((line) => line.trim());
+
+  const getValue = (label) =>
+    lines.find((line) => line.startsWith(label))?.replace(label, '').trim() || '';
+
+  return {
+    tipoDocumento: getValue('Tipo de documento:'),
+    numeroDocumento: getValue('Número de documento:'),
+    direccion: getValue('Dirección registrada:'),
+  };
+};
+
+const getProductImages = (product) => {
+  if (Array.isArray(product?.imagenes) && product.imagenes.length) {
+    return product.imagenes.filter(Boolean);
+  }
+
+  return product?.imagenUrl ? [product.imagenUrl] : [];
+};
+
 const getRelativeTime = (value) => {
   if (!value) return 'Sin fecha';
 
@@ -127,6 +155,7 @@ export function AdminDashboard() {
   const [usersError, setUsersError] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [editingUser, setEditingUser] = useState(null);
+  const [previewMicrostore, setPreviewMicrostore] = useState(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [editForm, setEditForm] = useState(initialEditForm);
   const [createForm, setCreateForm] = useState(initialCreateForm);
@@ -136,7 +165,13 @@ export function AdminDashboard() {
   const [expandedPqrsId, setExpandedPqrsId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmReview, setConfirmReview] = useState(null);
+  const [approvingUser, setApprovingUser] = useState(null);
+  const [approvalPassword, setApprovalPassword] = useState('');
+  const [passwordResetApproval, setPasswordResetApproval] = useState(null);
+  const [resetApprovalPassword, setResetApprovalPassword] = useState('');
   const [previewProduct, setPreviewProduct] = useState(null);
+  const [previewProductImageIndex, setPreviewProductImageIndex] = useState(0);
+  const [previewRating, setPreviewRating] = useState(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -195,23 +230,58 @@ export function AdminDashboard() {
     });
   }, [users, microstores]);
 
+  const managedUsers = useMemo(
+    () => usersWithBusiness.filter((user) => !(user.rol === 'entrepreneur' && user.estadoRevision === 'PENDIENTE')),
+    [usersWithBusiness],
+  );
+
   const filteredUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
 
     if (!query) {
-      return usersWithBusiness;
+      return managedUsers;
     }
 
-    return usersWithBusiness.filter((user) =>
+    return managedUsers.filter((user) =>
       [user.nombre, user.correo, user.negocio, user.numeroDocumento, user.telefono, user.rolNombre]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
-  }, [userSearch, usersWithBusiness]);
+  }, [managedUsers, userSearch]);
 
   const pendingUsers = useMemo(
     () => usersWithBusiness.filter((user) => user.rol === 'entrepreneur' && user.estadoRevision === 'PENDIENTE'),
     [usersWithBusiness],
+  );
+
+  const standardPqrsItems = useMemo(
+    () => pqrsItems.filter((item) => !isPasswordResetRequest(item)),
+    [pqrsItems],
+  );
+
+  const pendingPasswordResetRequests = useMemo(
+    () =>
+      pqrsItems
+        .filter((item) => isPasswordResetRequest(item) && item.estado !== 'COMPLETADO')
+        .map((item) => {
+          const parsed = parsePasswordResetMessage(item.mensaje);
+          const linkedUser = usersWithBusiness.find((user) => user.correo === item.correo && user.rol === 'entrepreneur');
+
+          return {
+            ...item,
+            solicitudTipo: 'RESET_PASSWORD',
+            userId: linkedUser?.id || null,
+            nombre: linkedUser?.nombre || item.nombre,
+            correo: linkedUser?.correo || item.correo,
+            telefono: linkedUser?.telefono || item.telefono,
+            tipoDocumento: linkedUser?.tipoDocumento || parsed.tipoDocumento,
+            numeroDocumento: linkedUser?.numeroDocumento || parsed.numeroDocumento,
+            direccion: linkedUser?.direccion || parsed.direccion,
+            fechaCreacion: item.fecha,
+            estadoRevision: 'PENDIENTE',
+          };
+        }),
+    [pqrsItems, usersWithBusiness],
   );
 
   const pendingMicrostores = useMemo(
@@ -230,18 +300,19 @@ export function AdminDashboard() {
   );
 
   const pendingPqrs = useMemo(
-    () => pqrsItems.filter((item) => item.estado === 'PENDIENTE' || item.estado === 'EN_PROCESO'),
-    [pqrsItems],
+    () => standardPqrsItems.filter((item) => item.estado === 'PENDIENTE' || item.estado === 'EN_PROCESO'),
+    [standardPqrsItems],
   );
 
   const totalPendingCount = useMemo(
     () =>
       pendingUsers.length +
+      pendingPasswordResetRequests.length +
       pendingMicrostores.length +
       pendingProducts.length +
       pendingRatings.length +
       pendingPqrs.length,
-    [pendingUsers.length, pendingMicrostores.length, pendingProducts.length, pendingRatings.length, pendingPqrs.length],
+    [pendingUsers.length, pendingPasswordResetRequests.length, pendingMicrostores.length, pendingProducts.length, pendingRatings.length, pendingPqrs.length],
   );
 
   const approvedRatings = useMemo(
@@ -262,7 +333,7 @@ export function AdminDashboard() {
         icon: Users,
         label: 'Usuarios Totales',
         value: (adminMetrics?.resumen?.totalUsuarios ?? users.length).toLocaleString('es-CO'),
-        change: `${pendingUsers.length} pendientes de revisión`,
+        change: `${pendingUsers.length + pendingPasswordResetRequests.length} pendientes de revisión`,
         color: 'var(--primary)',
       },
       {
@@ -276,7 +347,7 @@ export function AdminDashboard() {
         icon: MessageSquare,
         label: 'PQRs Pendientes',
         value: pendingPqrs.length.toLocaleString('es-CO'),
-        change: `${pqrsItems.length} solicitudes en total`,
+        change: `${standardPqrsItems.length} solicitudes en total`,
         color: '#F59E0B',
       },
       {
@@ -287,7 +358,7 @@ export function AdminDashboard() {
         color: '#10B981',
       },
     ],
-    [adminMetrics, averageRating, microstores, pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pqrsItems.length, users.length],
+    [adminMetrics, averageRating, microstores, pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pendingPasswordResetRequests.length, standardPqrsItems.length, users.length],
   );
 
   const recentActivity = useMemo(() => {
@@ -320,7 +391,7 @@ export function AdminDashboard() {
       timestamp: store.fechaCreacion,
     }));
 
-    const pqrsActivity = pqrsItems.map((item) => ({
+    const pqrsActivity = standardPqrsItems.map((item) => ({
       key: `pqrs-${item.id}`,
       icon: MessageSquare,
       bg: '#F59E0B',
@@ -347,17 +418,17 @@ export function AdminDashboard() {
       .filter((item) => item.timestamp && now - new Date(item.timestamp).getTime() <= last48Hours)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 6);
-  }, [microstores, pqrsItems, ratings, usersWithBusiness]);
+  }, [microstores, standardPqrsItems, ratings, usersWithBusiness]);
 
   const actionRequiredItems = useMemo(
     () => [
       ['Microtiendas', pendingMicrostores.length, 'Emprendimientos esperando aprobación'],
       ['Productos', pendingProducts.length, 'Productos pendientes de revisión'],
-      ['Usuarios', pendingUsers.length, 'Solicitudes de emprendedor pendientes'],
+      ['Usuarios', pendingUsers.length + pendingPasswordResetRequests.length, 'Solicitudes de usuario pendientes'],
       ['Comentarios', pendingRatings.length, 'Reseñas pendientes de moderación'],
       ['PQRs', pendingPqrs.length, 'Solicitudes pendientes de respuesta'],
     ],
-    [pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length],
+    [pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pendingPasswordResetRequests.length],
   );
 
   const handleReviewMicrostore = async (id, estadoRevision) => {
@@ -388,6 +459,126 @@ export function AdminDashboard() {
     }
   };
 
+  const handleReviewUser = async (id, estadoRevision, extraPayload = {}) => {
+    setReviewActionLoading(`user-${id}-${estadoRevision}`);
+    setUsersError('');
+
+    const targetUser = users.find((user) => Number(user.id) === Number(id));
+
+    if (!targetUser) {
+      setUsersError('No fue posible encontrar el usuario seleccionado.');
+      setReviewActionLoading('');
+      return;
+    }
+
+    try {
+      await updateUserRequest(id, {
+        nombre: targetUser.nombre || '',
+        correo: targetUser.correo || '',
+        telefono: targetUser.telefono || '',
+        direccion: targetUser.direccion || '',
+        tipoDocumento: targetUser.tipoDocumento || 'CC',
+        numeroDocumento: targetUser.numeroDocumento || '',
+        rol: targetUser.rol || 'entrepreneur',
+        estado: Boolean(targetUser.estado),
+        estadoRevision,
+        ...extraPayload,
+      });
+      await loadDashboardData({ withUsersLoading: true });
+    } catch (error) {
+      setUsersError(error.message || 'No fue posible actualizar la solicitud de usuario.');
+      throw error;
+    } finally {
+      setReviewActionLoading('');
+    }
+  };
+
+  const openApproveUserModal = (user) => {
+    setApprovalPassword('');
+    setApprovingUser(user);
+    setUsersError('');
+  };
+
+  const closeApproveUserModal = () => {
+    setApprovalPassword('');
+    setApprovingUser(null);
+  };
+
+  const openPasswordResetApprovalModal = (requestItem) => {
+    setResetApprovalPassword('');
+    setPasswordResetApproval(requestItem);
+    setUsersError('');
+  };
+
+  const closePasswordResetApprovalModal = () => {
+    setResetApprovalPassword('');
+    setPasswordResetApproval(null);
+  };
+
+  const handleRejectPasswordResetRequest = (requestItem) => {
+    setConfirmDelete({
+      type: 'password-reset-request',
+      id: requestItem.id,
+      title: 'Rechazar solicitud',
+      message: `¿Seguro que deseas rechazar la solicitud de cambio de contraseña de ${requestItem.nombre}?`,
+      confirmLabel: 'Sí, rechazar',
+    });
+  };
+
+  const handleConfirmApproveUser = async () => {
+    if (!approvingUser) {
+      return;
+    }
+
+    try {
+      await handleReviewUser(approvingUser.id, 'APROBADO', { password: approvalPassword });
+      closeApproveUserModal();
+    } catch {
+      // El error ya se refleja en usersError.
+    }
+  };
+
+  const handleConfirmPasswordResetApproval = async () => {
+    if (!passwordResetApproval?.userId) {
+      setUsersError('No fue posible encontrar el usuario asociado a esta solicitud.');
+      return;
+    }
+
+    const targetUser = users.find((user) => Number(user.id) === Number(passwordResetApproval.userId));
+
+    if (!targetUser) {
+      setUsersError('No fue posible encontrar el usuario asociado a esta solicitud.');
+      return;
+    }
+
+    setReviewActionLoading(`password-reset-${passwordResetApproval.id}`);
+    setUsersError('');
+
+    try {
+      await updateUserRequest(targetUser.id, {
+        nombre: targetUser.nombre || '',
+        correo: targetUser.correo || '',
+        telefono: targetUser.telefono || '',
+        direccion: targetUser.direccion || '',
+        tipoDocumento: targetUser.tipoDocumento || 'CC',
+        numeroDocumento: targetUser.numeroDocumento || '',
+        rol: targetUser.rol || 'entrepreneur',
+        estado: Boolean(targetUser.estado),
+        estadoRevision: targetUser.estadoRevision || 'APROBADO',
+        password: resetApprovalPassword,
+        mustChangePassword: true,
+      });
+
+      await updatePqrsStatusRequest(passwordResetApproval.id, { estado: 'COMPLETADO' });
+      closePasswordResetApprovalModal();
+      await loadDashboardData({ withUsersLoading: true });
+    } catch (error) {
+      setUsersError(error.message || 'No fue posible reasignar la contraseña inicial.');
+    } finally {
+      setReviewActionLoading('');
+    }
+  };
+
   const openReviewConfirmation = ({ type, id, name, estadoRevision }) => {
     setConfirmReview({
       type,
@@ -412,6 +603,10 @@ export function AdminDashboard() {
       await handleReviewProduct(confirmReview.id, confirmReview.estadoRevision);
     }
 
+    if (confirmReview.type === 'rating') {
+      await handleReviewRating(confirmReview.id, confirmReview.estadoRevision);
+    }
+
     setConfirmReview(null);
   };
 
@@ -432,6 +627,18 @@ export function AdminDashboard() {
     } finally {
       setReviewActionLoading('');
     }
+  };
+
+  const closeMicrostorePreview = () => {
+    setPreviewMicrostore(null);
+  };
+
+  const openRatingPreview = (rating) => {
+    setPreviewRating(rating);
+  };
+
+  const closeRatingPreview = () => {
+    setPreviewRating(null);
   };
 
   const handleCreateCategory = async () => {
@@ -697,6 +904,12 @@ export function AdminDashboard() {
         await loadDashboardData();
       }
 
+      if (confirmDelete.type === 'password-reset-request') {
+        setReviewActionLoading(`password-reset-reject-${confirmDelete.id}`);
+        await updatePqrsStatusRequest(confirmDelete.id, { estado: 'COMPLETADO' });
+        await loadDashboardData({ withUsersLoading: true });
+      }
+
       setConfirmDelete(null);
     } catch (error) {
       if (confirmDelete.type === 'user') {
@@ -705,6 +918,8 @@ export function AdminDashboard() {
         setUsersError(error.message || 'No fue posible eliminar la categoría.');
       } else if (confirmDelete.type === 'rating') {
         setUsersError(error.message || 'No fue posible eliminar el comentario.');
+      } else if (confirmDelete.type === 'password-reset-request') {
+        setUsersError(error.message || 'No fue posible rechazar la solicitud.');
       } else {
         setUsersError(error.message || 'No fue posible eliminar la PQR.');
       }
@@ -856,6 +1071,99 @@ export function AdminDashboard() {
         {activeTab === 'pending' ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className={`${cardClass} mb-6`}>
+              <h2 className="mb-6">Usuarios Pendientes de Aprobación</h2>
+              <div className={tableWrapperClass}>
+                <table className={tableClass}>
+                  <thead>
+                    <tr>
+                      <th className={thClass}>Nombre</th>
+                      <th className={thClass}>Correo</th>
+                      <th className={thClass}>Documento</th>
+                      <th className={thClass}>Teléfono</th>
+                      <th className={thClass}>Fecha</th>
+                      <th className={thClass}>Estado</th>
+                      <th className={thClass}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...pendingUsers, ...pendingPasswordResetRequests].length ? [...pendingUsers, ...pendingPasswordResetRequests].map((user) => (
+                      <tr key={user.solicitudTipo === 'RESET_PASSWORD' ? `password-reset-${user.id}` : `user-${user.id}`}>
+                        <td className={`${tdClass} font-semibold`}>{user.nombre}</td>
+                        <td className={tdClass}>{user.correo || 'Sin correo'}</td>
+                        <td className={tdClass}>
+                          {[user.tipoDocumento, user.numeroDocumento].filter(Boolean).join(' ') || 'Sin documento'}
+                        </td>
+                        <td className={tdClass}>{user.telefono || 'Sin teléfono'}</td>
+                        <td className={tdClass}>{user.fechaCreacion ? new Date(user.fechaCreacion).toLocaleDateString('es-CO') : 'Sin fecha'}</td>
+                        <td className={tdClass}>
+                          <Badge bg="#ffdd1a" color="var(--white)">
+                            {user.solicitudTipo === 'RESET_PASSWORD' ? 'Restablecimiento' : formatRevisionState(user.estadoRevision)}
+                          </Badge>
+                        </td>
+                        <td className={tdClass}>
+                          <div className="flex flex-wrap gap-2">
+                            {user.solicitudTipo === 'RESET_PASSWORD' ? (
+                              <>
+                                <button
+                                  onClick={() => openPasswordResetApprovalModal(user)}
+                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                                  disabled={reviewActionLoading === `password-reset-${user.id}`}
+                                >
+                                  <CheckCircle size={16} />
+                                  {reviewActionLoading === `password-reset-${user.id}` ? 'Procesando...' : 'Restablecer'}
+                                </button>
+                                <button
+                                  onClick={() => handleRejectPasswordResetRequest(user)}
+                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                                  disabled={reviewActionLoading === `password-reset-reject-${user.id}`}
+                                >
+                                  <XCircle size={16} />
+                                  {reviewActionLoading === `password-reset-reject-${user.id}` ? 'Procesando...' : 'Rechazar'}
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => openApproveUserModal(user)}
+                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                                  disabled={reviewActionLoading === `user-${user.id}-APROBADO`}
+                                >
+                                  <CheckCircle size={16} />
+                                  {reviewActionLoading === `user-${user.id}-APROBADO` ? 'Aprobando...' : 'Aprobar'}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openReviewConfirmation({
+                                      type: 'user',
+                                      id: user.id,
+                                      name: `la solicitud de ${user.nombre}`,
+                                      estadoRevision: 'RECHAZADO',
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-3 py-2 text-sm font-semibold text-[var(--white)]"
+                                  disabled={reviewActionLoading === `user-${user.id}-RECHAZADO`}
+                                >
+                                  <XCircle size={16} />
+                                  {reviewActionLoading === `user-${user.id}-RECHAZADO` ? 'Rechazando...' : 'Rechazar'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td className={`${tdClass} text-center text-[var(--muted-foreground)]`} colSpan={7}>
+                          No hay solicitudes de usuarios pendientes.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className={`${cardClass} mb-6`}>
               <h2 className="mb-6">Emprendimientos Pendientes de Aprobación</h2>
               <div className={tableWrapperClass}>
                 <table className={tableClass}>
@@ -876,7 +1184,7 @@ export function AdminDashboard() {
                         <td className={tdClass}>{business.propietario || 'Sin propietario'}</td>
                         <td className={tdClass}><Badge>{business.categoria || 'Sin categoría'}</Badge></td>
                         <td className={tdClass}>{business.fechaCreacion ? new Date(business.fechaCreacion).toLocaleDateString('es-CO') : 'Sin fecha'}</td>
-                        <td className={tdClass}><Badge bg="#F59E0B" color="var(--white)">{formatRevisionState(business.estadoRevision)}</Badge></td>
+                        <td className={tdClass}><Badge bg="#ffdd1a" color="var(--white)">{formatRevisionState(business.estadoRevision)}</Badge></td>
                         <td className={tdClass}>
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -909,7 +1217,13 @@ export function AdminDashboard() {
                               <XCircle size={16} />
                               {reviewActionLoading === `microstore-${business.id}-RECHAZADO` ? 'Rechazando...' : 'Rechazar'}
                             </button>
-                            <button className={smallOutlineButtonClass}><Eye size={16} /></button>
+                            <button
+                              className={smallOutlineButtonClass}
+                              onClick={() => setPreviewMicrostore(business)}
+                            >
+                              <Eye size={16} />
+                              Vista previa
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -946,8 +1260,8 @@ export function AdminDashboard() {
                       <tr key={`pending-product-${product.id}`}>
                         <td className={tdClass}>
                           <div className="flex items-start gap-3">
-                            {product.imagenUrl ? (
-                              <img src={product.imagenUrl} alt={product.nombre} className="h-12 w-12 rounded-[12px] object-cover" />
+                            {getProductImages(product).length ? (
+                              <img src={getProductImages(product)[0]} alt={product.nombre} className="h-12 w-12 rounded-[12px] object-cover" />
                             ) : (
                               <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-[var(--secondary)] text-xs font-semibold text-[var(--muted-foreground)]">
                                 IMG
@@ -971,7 +1285,13 @@ export function AdminDashboard() {
                         <td className={tdClass}>{product.stock ?? 0}</td>
                         <td className={tdClass}>
                           <div className="flex flex-wrap gap-2">
-                            <button className={smallOutlineButtonClass} onClick={() => setPreviewProduct(product)}>
+                            <button
+                              className={smallOutlineButtonClass}
+                              onClick={() => {
+                                setPreviewProduct(product);
+                                setPreviewProductImageIndex(0);
+                              }}
+                            >
                               <Eye size={16} />
                               Vista previa
                             </button>
@@ -1086,7 +1406,7 @@ export function AdminDashboard() {
                                     ? '#10B981'
                                     : user.estadoRevision === 'RECHAZADO'
                                       ? '#DC2626'
-                                      : '#F59E0B'
+                                      : '#ffdd1a'
                                 }
                                 color="var(--white)"
                               >
@@ -1150,7 +1470,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pqrsItems.length ? pqrsItems.map((pqr) => (
+                    {standardPqrsItems.length ? standardPqrsItems.map((pqr) => (
                       <Fragment key={`pqrs-${pqr.id}`}>
                         <tr key={`pqrs-row-${pqr.id}`}>
                           <td className={tdClass}>
@@ -1163,7 +1483,7 @@ export function AdminDashboard() {
                           <td className={tdClass}>{pqr.fecha ? new Date(pqr.fecha).toLocaleDateString('es-CO') : 'Sin fecha'}</td>
                           <td className={tdClass}>
                             <Badge
-                              bg={pqr.estado === 'PENDIENTE' ? '#F59E0B' : pqr.estado === 'EN_PROCESO' ? 'var(--primary)' : '#10B981'}
+                              bg={pqr.estado === 'PENDIENTE' ? '#ffdd1a' : pqr.estado === 'EN_PROCESO' ? 'var(--primary)' : '#10B981'}
                               color="var(--white)"
                             >
                               {pqr.estado}
@@ -1264,7 +1584,11 @@ export function AdminDashboard() {
                         <td className={`${tdClass} font-semibold`}>{rating.nombreVisitante}</td>
                         <td className={tdClass}>{rating.microtienda || 'Sin microtienda'}</td>
                         <td className={tdClass}>{rating.puntuacion}/5</td>
-                        <td className={tdClass}>{rating.comentario}</td>
+                        <td className={tdClass}>
+                          <p className="m-0 max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-[var(--foreground)]">
+                            {rating.comentario}
+                          </p>
+                        </td>
                         <td className={tdClass}>{rating.fecha ? new Date(rating.fecha).toLocaleDateString('es-CO') : 'Sin fecha'}</td>
                         <td className={tdClass}>
                           <Badge
@@ -1273,7 +1597,7 @@ export function AdminDashboard() {
                                 ? '#10B981'
                                 : rating.estadoRevision === 'RECHAZADO'
                                   ? '#DC2626'
-                                  : '#F59E0B'
+                                  : '#ffdd1a'
                             }
                             color="var(--white)"
                           >
@@ -1282,35 +1606,13 @@ export function AdminDashboard() {
                         </td>
                         <td className={tdClass}>
                           <div className="flex flex-wrap gap-2">
-                            {rating.estadoRevision === 'APROBADO' ? (
-                              <button
-                                onClick={() => handleDeleteRating(rating)}
-                                className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[#DC2626] px-3 py-2 text-sm font-semibold text-[#DC2626] transition-all duration-200 hover:bg-[#DC2626] hover:text-[var(--white)]"
-                                disabled={reviewActionLoading === `rating-delete-${rating.id}`}
-                              >
-                                <Trash2 size={16} />
-                                {reviewActionLoading === `rating-delete-${rating.id}` ? 'Eliminando...' : 'Eliminar'}
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleReviewRating(rating.id, 'APROBADO')}
-                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-3 py-2 text-sm font-semibold text-[var(--white)]"
-                                  disabled={reviewActionLoading === `rating-${rating.id}-APROBADO`}
-                                >
-                                  <CheckCircle size={16} />
-                                  Aprobar
-                                </button>
-                                <button
-                                  onClick={() => handleReviewRating(rating.id, 'RECHAZADO')}
-                                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-3 py-2 text-sm font-semibold text-[var(--white)]"
-                                  disabled={reviewActionLoading === `rating-${rating.id}-RECHAZADO`}
-                                >
-                                  <XCircle size={16} />
-                                  Rechazar
-                                </button>
-                              </>
-                            )}
+                            <button
+                              onClick={() => openRatingPreview(rating)}
+                              className={smallOutlineButtonClass}
+                            >
+                              <Eye size={16} />
+                              Vista previa
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1372,6 +1674,142 @@ export function AdminDashboard() {
           </motion.div>
         ) : null}
       </div>
+
+      {approvingUser ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[640px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5">
+              <h3 className="mb-2">Aprobar solicitud de usuario</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                Revisa la información del solicitante y asigna una contraseña inicial antes de aprobar el acceso.
+              </p>
+            </div>
+
+            <div className="mb-5 grid gap-4 rounded-[var(--radius)] bg-[var(--secondary)] p-4 md:grid-cols-2">
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Nombre</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{approvingUser.nombre}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Correo</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{approvingUser.correo || 'Sin correo'}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Documento</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {[approvingUser.tipoDocumento, approvingUser.numeroDocumento].filter(Boolean).join(' ') || 'Sin documento'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Teléfono</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{approvingUser.telefono || 'Sin teléfono'}</span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Dirección</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{approvingUser.direccion || 'Sin dirección registrada'}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Contraseña inicial</label>
+              <input
+                className={inputClass}
+                type="password"
+                value={approvalPassword}
+                onChange={(event) => setApprovalPassword(event.target.value)}
+                placeholder="Escriba la contraseña inicial para este nuevo usuario"
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className={outlineButtonClass}
+                onClick={closeApproveUserModal}
+                disabled={reviewActionLoading === `user-${approvingUser.id}-APROBADO`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={primaryButtonClass}
+                onClick={handleConfirmApproveUser}
+                disabled={reviewActionLoading === `user-${approvingUser.id}-APROBADO`}
+              >
+                {reviewActionLoading === `user-${approvingUser.id}-APROBADO` ? 'Aprobando...' : 'Aprobar usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {passwordResetApproval ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[640px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5">
+              <h3 className="mb-2">Restablecer contraseña inicial</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                Revisa los datos de la solicitud y asigna una nueva contraseña inicial para el emprendedor.
+              </p>
+            </div>
+
+            <div className="mb-5 grid gap-4 rounded-[var(--radius)] bg-[var(--secondary)] p-4 md:grid-cols-2">
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Nombre</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{passwordResetApproval.nombre}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Correo</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{passwordResetApproval.correo || 'Sin correo'}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Documento</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {[passwordResetApproval.tipoDocumento, passwordResetApproval.numeroDocumento].filter(Boolean).join(' ') || 'Sin documento'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Teléfono</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{passwordResetApproval.telefono || 'Sin teléfono'}</span>
+              </div>
+              <div className="md:col-span-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Dirección</span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">{passwordResetApproval.direccion || 'Sin dirección registrada'}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Nueva contraseña inicial</label>
+              <input
+                className={inputClass}
+                type="password"
+                value={resetApprovalPassword}
+                onChange={(event) => setResetApprovalPassword(event.target.value)}
+                placeholder="Escribe la nueva contraseña inicial para este emprendedor"
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className={outlineButtonClass}
+                onClick={closePasswordResetApprovalModal}
+                disabled={reviewActionLoading === `password-reset-${passwordResetApproval.id}`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={primaryButtonClass}
+                onClick={handleConfirmPasswordResetApproval}
+                disabled={reviewActionLoading === `password-reset-${passwordResetApproval.id}`}
+              >
+                {reviewActionLoading === `password-reset-${passwordResetApproval.id}` ? 'Restableciendo...' : 'Guardar contraseña inicial'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {confirmDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
@@ -1456,6 +1894,81 @@ export function AdminDashboard() {
         </div>
       ) : null}
 
+      {previewMicrostore ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-8">
+          <div className="w-full max-w-[760px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="mb-1">{previewMicrostore.nombre}</h3>
+                <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                  Solicitud de emprendimiento pendiente de revisión.
+                </p>
+              </div>
+              <button className={outlineButtonClass} type="button" onClick={closeMicrostorePreview}>
+                Cerrar
+              </button>
+            </div>
+            <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+              <div className="overflow-hidden rounded-[var(--radius)] bg-[var(--secondary)]">
+                {previewMicrostore.logoImagen ? (
+                  <img
+                    src={previewMicrostore.logoImagen}
+                    alt={previewMicrostore.nombre}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex min-h-[280px] items-center justify-center text-sm font-semibold text-[var(--muted-foreground)]">
+                    Sin logo
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    Propietario
+                  </p>
+                  <p className="m-0 text-sm font-semibold text-[var(--foreground)]">
+                    {previewMicrostore.propietario || 'Sin propietario'}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    Categoría
+                  </p>
+                  <Badge>{previewMicrostore.categoria || 'Sin categoría'}</Badge>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    Descripción
+                  </p>
+                  <p className="m-0 text-sm leading-6 text-[var(--foreground)]">
+                    {previewMicrostore.descripcion || 'Sin descripción'}
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                      WhatsApp
+                    </p>
+                    <p className="m-0 text-sm font-semibold text-[var(--foreground)]">
+                      {previewMicrostore.whatsapp || 'Sin dato'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                      Redes sociales
+                    </p>
+                    <p className="m-0 break-words text-sm font-semibold text-[var(--foreground)]">
+                      {previewMicrostore.redesSociales || 'Sin dato'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {previewProduct ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-8">
           <div className="w-full max-w-[760px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
@@ -1466,14 +1979,58 @@ export function AdminDashboard() {
                   {previewProduct.microtiendaNombre || previewProduct.microtienda || 'Sin microtienda'}
                 </p>
               </div>
-              <button className={outlineButtonClass} type="button" onClick={() => setPreviewProduct(null)}>
+              <button
+                className={outlineButtonClass}
+                type="button"
+                onClick={() => {
+                  setPreviewProduct(null);
+                  setPreviewProductImageIndex(0);
+                }}
+              >
                 Cerrar
               </button>
             </div>
             <div className="grid gap-6 md:grid-cols-[280px_1fr]">
               <div className="overflow-hidden rounded-[var(--radius)] bg-[var(--secondary)]">
-                {previewProduct.imagenUrl ? (
-                  <img src={previewProduct.imagenUrl} alt={previewProduct.nombre} className="h-full w-full object-cover" />
+                {getProductImages(previewProduct).length ? (
+                  <div className="relative">
+                    <img
+                      src={getProductImages(previewProduct)[previewProductImageIndex] || getProductImages(previewProduct)[0]}
+                      alt={`${previewProduct.nombre} ${previewProductImageIndex + 1}`}
+                      className="h-full min-h-[280px] w-full object-cover"
+                    />
+                    {getProductImages(previewProduct).length > 1 ? (
+                      <>
+                        <button
+                          type="button"
+                          className="absolute top-1/2 left-3 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.72)] bg-[rgba(15,23,42,0.58)] text-[var(--white)] shadow-[0_8px_24px_rgba(15,23,42,0.22)] transition-all duration-200 hover:bg-[rgba(15,23,42,0.82)]"
+                          onClick={() =>
+                            setPreviewProductImageIndex((current) =>
+                              current === 0 ? getProductImages(previewProduct).length - 1 : current - 1,
+                            )
+                          }
+                          aria-label="Imagen anterior"
+                        >
+                          <ChevronLeft size={22} />
+                        </button>
+                        <button
+                          type="button"
+                          className="absolute top-1/2 right-3 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.72)] bg-[rgba(15,23,42,0.58)] text-[var(--white)] shadow-[0_8px_24px_rgba(15,23,42,0.22)] transition-all duration-200 hover:bg-[rgba(15,23,42,0.82)]"
+                          onClick={() =>
+                            setPreviewProductImageIndex((current) =>
+                              current === getProductImages(previewProduct).length - 1 ? 0 : current + 1,
+                            )
+                          }
+                          aria-label="Imagen siguiente"
+                        >
+                          <ChevronRight size={22} />
+                        </button>
+                        <div className="absolute right-3 bottom-3 rounded-full bg-[rgba(15,23,42,0.72)] px-3 py-1 text-xs font-semibold text-[var(--white)]">
+                          {previewProductImageIndex + 1} / {getProductImages(previewProduct).length}
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 ) : (
                   <div className="flex min-h-[280px] items-center justify-center text-sm font-semibold text-[var(--muted-foreground)]">
                     Sin imagen
@@ -1502,6 +2059,124 @@ export function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewRating ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-8">
+          <div className="w-full max-w-[720px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="mb-1">Vista previa del comentario</h3>
+                <p className="m-0 text-sm text-[var(--muted-foreground)]">
+                  Revisa la reseña completa y decide si debe aprobarse, rechazarse o eliminarse.
+                </p>
+              </div>
+              <button className={outlineButtonClass} onClick={closeRatingPreview} type="button">
+                Cerrar
+              </button>
+            </div>
+
+            <div className="mb-5 grid gap-4 rounded-[var(--radius)] bg-[var(--secondary)] p-4 md:grid-cols-2">
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                  Visitante
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {previewRating.nombreVisitante || 'Visitante'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                  Microtienda
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {previewRating.microtienda || 'Sin microtienda'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                  Producto
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {previewRating.producto || 'Reseña general del negocio'}
+                </span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                  Calificación
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--foreground)]">
+                  {previewRating.puntuacion}/5 · {previewRating.fecha ? new Date(previewRating.fecha).toLocaleDateString('es-CO') : 'Sin fecha'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                Comentario completo
+              </p>
+              <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-background)] px-4 py-4">
+                <p className="m-0 text-sm leading-7 text-[var(--foreground)]">
+                  {previewRating.comentario || 'Sin comentario'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {previewRating.estadoRevision === 'APROBADO' ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-[#DC2626] px-4 py-2.5 text-sm font-semibold text-[#DC2626] transition-all duration-200 hover:bg-[#DC2626] hover:text-[var(--white)]"
+                  onClick={() => {
+                    closeRatingPreview();
+                    handleDeleteRating(previewRating);
+                  }}
+                  disabled={reviewActionLoading === `rating-delete-${previewRating.id}`}
+                >
+                  <Trash2 size={16} />
+                  {reviewActionLoading === `rating-delete-${previewRating.id}` ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#DC2626] px-4 py-2.5 text-sm font-semibold text-[var(--white)]"
+                    onClick={() => {
+                      closeRatingPreview();
+                      openReviewConfirmation({
+                        type: 'rating',
+                        id: previewRating.id,
+                        name: `el comentario de ${previewRating.nombreVisitante || 'este visitante'}`,
+                        estadoRevision: 'RECHAZADO',
+                      });
+                    }}
+                    disabled={reviewActionLoading === `rating-${previewRating.id}-RECHAZADO`}
+                  >
+                    <XCircle size={16} />
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-[var(--radius)] border border-transparent bg-[#10B981] px-4 py-2.5 text-sm font-semibold text-[var(--white)]"
+                    onClick={() => {
+                      closeRatingPreview();
+                      openReviewConfirmation({
+                        type: 'rating',
+                        id: previewRating.id,
+                        name: `el comentario de ${previewRating.nombreVisitante || 'este visitante'}`,
+                        estadoRevision: 'APROBADO',
+                      });
+                    }}
+                    disabled={reviewActionLoading === `rating-${previewRating.id}-APROBADO`}
+                  >
+                    <CheckCircle size={16} />
+                    Aprobar
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1655,10 +2330,17 @@ export function AdminDashboard() {
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelClass}>Contraseña inicial</label>
-                  <input className={inputClass} value={createForm.password} onChange={handleCreateFormChange('password')} placeholder="Opcional para emprendedor" />
-                </div>
+                  <div>
+                    <label className={labelClass}>Contraseña inicial</label>
+                    <input
+                      className={inputClass}
+                      type="password"
+                      value={createForm.password}
+                      onChange={handleCreateFormChange('password')}
+                      placeholder="Ingresa la contraseña inicial para este usuario"
+                      required
+                    />
+                  </div>
                 <label className="flex items-center gap-3 pt-8 text-sm font-semibold text-[var(--foreground)]">
                   <input type="checkbox" checked={createForm.estado} onChange={handleCreateFormChange('estado')} />
                   Usuario activo
@@ -1769,4 +2451,3 @@ export function AdminDashboard() {
     </div>
   );
 }
-

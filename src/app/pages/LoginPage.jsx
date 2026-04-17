@@ -3,8 +3,8 @@ import { motion } from 'motion/react';
 import { User, Lock, LogIn, UserPlus, Building2, Mail, Phone, MapPin, CreditCard } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
-import { createEntrepreneurRequest, loginRequest } from '../utils/api';
-import { saveSession } from '../utils/session';
+import { changeMyPasswordRequest, createEntrepreneurRequest, createPasswordResetRequest, loginRequest } from '../utils/api';
+import { saveSession, updateSessionUser, clearSession } from '../utils/session';
 
 const cardClass =
   'rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-8 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(27,58,95,0.12)]';
@@ -30,6 +30,21 @@ const initialRequestForm = {
   direccion: '',
   telefono: '',
   correo: '',
+};
+
+const initialPasswordRequestForm = {
+  nombre: '',
+  tipoDocumento: 'CC',
+  numeroDocumento: '',
+  direccion: '',
+  telefono: '',
+  correo: '',
+};
+
+const initialPasswordResetForm = {
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
 };
 
 function Field({ icon: Icon, id, label, type = 'text', value, onChange, placeholder, required = true }) {
@@ -67,6 +82,15 @@ export function LoginPage() {
   const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState('');
   const [requestForm, setRequestForm] = useState(initialRequestForm);
+  const [passwordResetVisible, setPasswordResetVisible] = useState(false);
+  const [passwordResetForm, setPasswordResetForm] = useState(initialPasswordResetForm);
+  const [passwordResetError, setPasswordResetError] = useState('');
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordRequestVisible, setPasswordRequestVisible] = useState(false);
+  const [passwordRequestForm, setPasswordRequestForm] = useState(initialPasswordRequestForm);
+  const [passwordRequestError, setPasswordRequestError] = useState('');
+  const [passwordRequestSuccess, setPasswordRequestSuccess] = useState('');
+  const [passwordRequestLoading, setPasswordRequestLoading] = useState(false);
   const navigate = useNavigate();
 
   const loginTitle = useMemo(() => {
@@ -87,6 +111,23 @@ export function LoginPage() {
     setRequestSuccess('');
   };
 
+  const updatePasswordResetField = (field) => (event) => {
+    setPasswordResetForm((current) => ({
+      ...current,
+      [field]: event.target.value,
+    }));
+    setPasswordResetError('');
+  };
+
+  const updatePasswordRequestField = (field) => (event) => {
+    setPasswordRequestForm((current) => ({
+      ...current,
+      [field]: event.target.value,
+    }));
+    setPasswordRequestError('');
+    setPasswordRequestSuccess('');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -100,6 +141,17 @@ export function LoginPage() {
       });
 
       saveSession(session);
+
+      if (session?.user?.rol === 'entrepreneur' && session?.user?.mustChangePassword) {
+        setPasswordResetForm({
+          currentPassword: password,
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setPasswordResetError('');
+        setPasswordResetVisible(true);
+        return;
+      }
 
       if (session?.user?.rol === 'admin') {
         navigate('/admin');
@@ -116,6 +168,39 @@ export function LoginPage() {
       setLoginError(error.message || 'No fue posible iniciar sesión con esas credenciales.');
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  const handleFirstPasswordChange = async (event) => {
+    event.preventDefault();
+    setPasswordResetError('');
+
+    if (!passwordResetForm.currentPassword.trim() || !passwordResetForm.newPassword.trim() || !passwordResetForm.confirmPassword.trim()) {
+      setPasswordResetError('Debes completar todos los campos para continuar.');
+      return;
+    }
+
+    if (passwordResetForm.newPassword !== passwordResetForm.confirmPassword) {
+      setPasswordResetError('La confirmación no coincide con la nueva contraseña.');
+      return;
+    }
+
+    setPasswordResetLoading(true);
+
+    try {
+      await changeMyPasswordRequest({
+        currentPassword: passwordResetForm.currentPassword,
+        newPassword: passwordResetForm.newPassword,
+      });
+
+      updateSessionUser({ mustChangePassword: false });
+      setPasswordResetVisible(false);
+      setPasswordResetForm(initialPasswordResetForm);
+      navigate('/dashboard');
+    } catch (error) {
+      setPasswordResetError(error.message || 'No fue posible actualizar la contraseña.');
+    } finally {
+      setPasswordResetLoading(false);
     }
   };
 
@@ -143,6 +228,34 @@ export function LoginPage() {
       setRequestError(error.message || 'No se pudo enviar la solicitud en este momento.');
     } finally {
       setRequestLoading(false);
+    }
+  };
+
+  const handlePasswordRequest = async (event) => {
+    event.preventDefault();
+    setPasswordRequestError('');
+    setPasswordRequestSuccess('');
+    setPasswordRequestLoading(true);
+
+    try {
+      await createPasswordResetRequest({
+        nombre: passwordRequestForm.nombre.trim(),
+        tipoDocumento: passwordRequestForm.tipoDocumento.trim(),
+        numeroDocumento: passwordRequestForm.numeroDocumento.trim(),
+        direccion: passwordRequestForm.direccion.trim(),
+        telefono: passwordRequestForm.telefono.trim(),
+        correo: passwordRequestForm.correo.trim(),
+      });
+
+      setPasswordRequestSuccess(
+        'La solicitud fue enviada correctamente. Administración revisará los datos registrados y te ayudará a restablecer la contraseña.',
+      );
+      setPasswordRequestForm(initialPasswordRequestForm);
+      setPasswordRequestVisible(false);
+    } catch (error) {
+      setPasswordRequestError(error.message || 'No se pudo enviar la solicitud de cambio de contraseña.');
+    } finally {
+      setPasswordRequestLoading(false);
     }
   };
 
@@ -424,23 +537,240 @@ export function LoginPage() {
 
             {loginType === 'entrepreneur' ? (
               <div className="mt-6 text-center">
-                <p className="mb-2 text-sm text-[var(--muted-foreground)]">¿Aún no tienes cuenta aprobada?</p>
-                <button
-                  className={smallOutlineButtonClass}
-                  type="button"
-                  onClick={() => {
-                    setLoginType(null);
-                    setRequestFormVisible(true);
-                    resetRequestFeedback();
-                  }}
-                >
-                  Solicitar registro
-                </button>
+                <div className="flex flex-col items-center gap-3">
+                  <div>
+                    <p className="mb-2 text-sm text-[var(--muted-foreground)]">¿Aún no tienes cuenta aprobada?</p>
+                    <button
+                      className={smallOutlineButtonClass}
+                      type="button"
+                      onClick={() => {
+                        setLoginType(null);
+                        setRequestFormVisible(true);
+                        resetRequestFeedback();
+                      }}
+                    >
+                      Solicitar registro
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-sm text-[var(--muted-foreground)]">¿Necesitas restablecer tu contraseña inicial?</p>
+                    <button
+                      className={smallOutlineButtonClass}
+                      type="button"
+                      onClick={() => {
+                        setPasswordRequestVisible(true);
+                        setPasswordRequestError('');
+                        setPasswordRequestSuccess('');
+                      }}
+                    >
+                      Solicitar cambio de contraseña
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
         </motion.div>
       </div>
+
+      {passwordResetVisible ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[640px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5">
+              <h3 className="mb-2">Actualiza tu contraseña</h3>
+              <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                Es tu primer ingreso. Para continuar al panel de emprendedor debes cambiar la contraseña inicial entregada por el administrador.
+              </p>
+            </div>
+
+            <form className="space-y-4" onSubmit={handleFirstPasswordChange}>
+              <Field
+                icon={Lock}
+                id="current-password"
+                label="Contraseña actual"
+                type="password"
+                value={passwordResetForm.currentPassword}
+                onChange={updatePasswordResetField('currentPassword')}
+                placeholder="Ingresa la contraseña inicial"
+              />
+
+              <div className="group relative">
+                <Field
+                  icon={Lock}
+                  id="new-password"
+                  label="Nueva contraseña"
+                  type="password"
+                  value={passwordResetForm.newPassword}
+                  onChange={updatePasswordResetField('newPassword')}
+                  placeholder="Crea tu nueva contraseña"
+                />
+                <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-[420px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-xs leading-5 text-[var(--muted-foreground)] shadow-[0_10px_30px_rgba(15,23,42,0.12)] group-hover:block group-focus-within:block">
+                  La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un carácter especial.
+                </div>
+              </div>
+
+              <Field
+                icon={Lock}
+                id="confirm-password"
+                label="Confirmar nueva contraseña"
+                type="password"
+                value={passwordResetForm.confirmPassword}
+                onChange={updatePasswordResetField('confirmPassword')}
+                placeholder="Escribe nuevamente la nueva contraseña"
+              />
+
+              {passwordResetError ? (
+                <div className={`${alertBaseClass} border-red-200 bg-red-50 text-red-700`}>{passwordResetError}</div>
+              ) : null}
+
+              <div className="flex flex-col justify-end gap-3 pt-2 sm:flex-row">
+                <button
+                  type="button"
+                  className={outlineButtonClass}
+                  onClick={() => {
+                    setPasswordResetVisible(false);
+                    setPasswordResetForm(initialPasswordResetForm);
+                    clearSession();
+                    navigate('/');
+                  }}
+                  disabled={passwordResetLoading}
+                >
+                  Salir
+                </button>
+                <button type="submit" className={accentButtonClass} disabled={passwordResetLoading}>
+                  {passwordResetLoading ? 'Actualizando...' : 'Guardar nueva contraseña'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {passwordRequestVisible ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] px-4 py-8">
+          <div className="w-full max-w-[720px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="mb-2">Solicitar cambio de contraseña</h3>
+                <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
+                  Diligencia los datos con los que fue creada tu cuenta para enviar la solicitud a administración.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={outlineButtonClass}
+                onClick={() => {
+                  setPasswordRequestVisible(false);
+                  setPasswordRequestForm(initialPasswordRequestForm);
+                  setPasswordRequestError('');
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordRequest} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  icon={User}
+                  id="password-request-name"
+                  label="Nombre completo"
+                  value={passwordRequestForm.nombre}
+                  onChange={updatePasswordRequestField('nombre')}
+                  placeholder="Nombre del emprendedor"
+                />
+                <Field
+                  icon={Mail}
+                  id="password-request-email"
+                  label="Correo electrónico"
+                  type="email"
+                  value={passwordRequestForm.correo}
+                  onChange={updatePasswordRequestField('correo')}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[180px_1fr]">
+                <div>
+                  <label htmlFor="password-request-document-type" className={labelClass}>
+                    Tipo de documento
+                  </label>
+                  <select
+                    id="password-request-document-type"
+                    className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-background)] px-4 py-3 text-base outline-none transition-all duration-200 focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(255,184,0,0.15)]"
+                    value={passwordRequestForm.tipoDocumento}
+                    onChange={updatePasswordRequestField('tipoDocumento')}
+                    required
+                  >
+                    <option value="CC">CC</option>
+                    <option value="CE">CE</option>
+                    <option value="NIT">NIT</option>
+                    <option value="TI">TI</option>
+                  </select>
+                </div>
+                <Field
+                  icon={CreditCard}
+                  id="password-request-document-number"
+                  label="Número de documento"
+                  value={passwordRequestForm.numeroDocumento}
+                  onChange={updatePasswordRequestField('numeroDocumento')}
+                  placeholder="Ingresa tu número de documento"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  icon={Phone}
+                  id="password-request-phone"
+                  label="Teléfono"
+                  value={passwordRequestForm.telefono}
+                  onChange={updatePasswordRequestField('telefono')}
+                  placeholder="Número de contacto"
+                />
+                <Field
+                  icon={MapPin}
+                  id="password-request-address"
+                  label="Dirección"
+                  value={passwordRequestForm.direccion}
+                  onChange={updatePasswordRequestField('direccion')}
+                  placeholder="Dirección registrada"
+                />
+              </div>
+
+              {passwordRequestError ? (
+                <div className={`${alertBaseClass} border-red-200 bg-red-50 text-red-700`}>
+                  {passwordRequestError}
+                </div>
+              ) : null}
+
+              {passwordRequestSuccess ? (
+                <div className={`${alertBaseClass} border-emerald-200 bg-emerald-50 text-emerald-700`}>
+                  {passwordRequestSuccess}
+                </div>
+              ) : null}
+
+              <div className="flex flex-col justify-end gap-3 pt-2 sm:flex-row">
+                <button
+                  type="button"
+                  className={outlineButtonClass}
+                  onClick={() => {
+                    setPasswordRequestVisible(false);
+                    setPasswordRequestForm(initialPasswordRequestForm);
+                    setPasswordRequestError('');
+                    setPasswordRequestSuccess('');
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className={accentButtonClass} disabled={passwordRequestLoading}>
+                  {passwordRequestLoading ? 'Enviando solicitud...' : 'Enviar solicitud'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

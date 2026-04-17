@@ -256,9 +256,9 @@ export function MarketplacePage() {
                         <span className={badgeClass}>{business.category}</span>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <h3 className="mb-2 text-xl">{business.name}</h3>
-                      <p className="mb-3 min-h-[40px] text-sm text-[var(--muted-foreground)]">
+                    <div className="flex min-h-[205px] flex-col p-6">
+                      <h3 className="mb-2 min-h-[56px] text-xl">{business.name}</h3>
+                      <p className="mb-3 min-h-[40px] line-clamp-2 text-sm text-[var(--muted-foreground)]">
                         {business.description}
                       </p>
                       <div className="mb-2 flex items-center gap-2">
@@ -266,11 +266,13 @@ export function MarketplacePage() {
                         <span className="text-sm text-[var(--muted-foreground)]">{business.owner}</span>
                       </div>
                       {business.sector ? (
-                        <div className="mb-2 text-sm text-[var(--muted-foreground)]">
+                        <div className="mb-2 min-h-[20px] text-sm text-[var(--muted-foreground)]">
                           Sector: {business.sector}
                         </div>
-                      ) : null}
-                      <div className="flex items-center justify-between border-t border-[var(--border)] pt-2">
+                      ) : (
+                        <div className="mb-2 min-h-[20px]" />
+                      )}
+                      <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] pt-2">
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <Star size={16} fill="var(--accent)" color="var(--accent)" />

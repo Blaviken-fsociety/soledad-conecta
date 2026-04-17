@@ -42,7 +42,8 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 app.get('/api', (_request, response) => {
   response.json({
