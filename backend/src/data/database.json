@@ -486,6 +486,7 @@
       "id": 2,
       "microtienda_id": 7,
       "id_usuario": null,
+<<<<<<< Updated upstream
       "timestamp": "2026-04-17T17:59:04.485Z",
       "duracion_segundos": 32
     },
@@ -670,6 +671,10 @@
       "id_usuario": null,
       "timestamp": "2026-04-18T02:57:15.338Z",
       "duracion_segundos": 69
+=======
+      "timestamp": "2026-04-17T17:35:54.676Z",
+      "duracion_segundos": 0
+>>>>>>> Stashed changes
     }
   ],
   "product_views": [
@@ -686,14 +691,20 @@
       "producto_id": 8,
       "microtienda_id": 7,
       "id_usuario": null,
+<<<<<<< Updated upstream
       "timestamp": "2026-04-17T18:47:33.344Z",
       "duracion_segundos": 7
+=======
+      "timestamp": "2026-04-17T17:35:56.160Z",
+      "duracion_segundos": 5
+>>>>>>> Stashed changes
     },
     {
       "id": 3,
       "producto_id": 9,
       "microtienda_id": 7,
       "id_usuario": null,
+<<<<<<< Updated upstream
       "timestamp": "2026-04-17T19:34:48.906Z",
       "duracion_segundos": 25
     },
@@ -704,12 +715,25 @@
       "id_usuario": null,
       "timestamp": "2026-04-18T00:51:54.748Z",
       "duracion_segundos": 1
+=======
+      "timestamp": "2026-04-17T17:36:01.654Z",
+      "duracion_segundos": 4
+    },
+    {
+      "id": 4,
+      "producto_id": 8,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-17T17:36:06.300Z",
+      "duracion_segundos": 12
+>>>>>>> Stashed changes
     },
     {
       "id": 5,
       "producto_id": 8,
       "microtienda_id": 7,
       "id_usuario": null,
+<<<<<<< Updated upstream
       "timestamp": "2026-04-18T00:52:16.851Z",
       "duracion_segundos": 7
     },
@@ -720,6 +744,10 @@
       "id_usuario": null,
       "timestamp": "2026-04-18T02:57:02.430Z",
       "duracion_segundos": 1
+=======
+      "timestamp": "2026-04-17T17:36:19.941Z",
+      "duracion_segundos": 7
+>>>>>>> Stashed changes
     }
   ]
 }
