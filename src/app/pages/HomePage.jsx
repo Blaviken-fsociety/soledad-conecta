@@ -26,7 +26,7 @@ import {
 const categoryDefinitions = [
   { name: 'Alimentos', targetCategory: 'Alimentos', icon: Pizza },
   { name: 'Moda', targetCategory: 'Moda', icon: Shirt },
-  { name: 'Tecnología', targetCategory: 'Tecnología', icon: Monitor },
+  { name: 'Tecnologia', targetCategory: 'Tecnologia', icon: Monitor },
   { name: 'Artesanías', targetCategory: 'Artesanías', icon: Palette },
   { name: 'Servicios', targetCategory: 'Servicios', icon: Settings },
   { name: 'Belleza', targetCategory: 'Salud y Belleza', icon: Sparkles },
