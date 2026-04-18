@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   Loader,
   MessageCircle,
   Phone,
@@ -64,6 +65,95 @@ const initialReviewForm = {
   comentario: '',
 };
 
+const PRODUCTS_PER_PAGE = 6;
+const REVIEWS_PER_PAGE = 4;
+
+const createInitialPagination = (limit) => ({
+  page: 1,
+  limit,
+  total: 0,
+  totalPages: 1,
+  hasPreviousPage: false,
+  hasNextPage: false,
+});
+
+const paginationButtonClass =
+  'inline-flex min-w-10 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--primary)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50';
+const activePaginationButtonClass =
+  'inline-flex min-w-10 items-center justify-center rounded-[var(--radius)] border border-[var(--primary)] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-[0_6px_16px_rgba(27,58,95,0.18)]';
+const selectClass =
+  'min-h-11 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--input-background)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] outline-none transition-all duration-200 focus:border-[var(--accent)] focus:ring-4 focus:ring-[rgba(255,184,0,0.15)]';
+
+const buildVisiblePages = (currentPage, totalPages) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const start = Math.max(currentPage - 2, 1);
+  const end = Math.min(start + 4, totalPages);
+  const normalizedStart = Math.max(end - 4, 1);
+
+  return Array.from({ length: end - normalizedStart + 1 }, (_, index) => normalizedStart + index);
+};
+
+const productSortOptions = [
+  { value: 'newest', label: 'Mas recientes' },
+  { value: 'rating_desc', label: 'Mejor calificacion' },
+  { value: 'rating_asc', label: 'Menor calificacion' },
+  { value: 'price_asc', label: 'Menor precio' },
+  { value: 'price_desc', label: 'Mayor precio' },
+  { value: 'name_asc', label: 'Nombre A-Z' },
+];
+
+const ratingSortOptions = [
+  { value: 'newest', label: 'Mas recientes' },
+  { value: 'oldest', label: 'Mas antiguas' },
+  { value: 'score_desc', label: 'Mejor puntuacion' },
+  { value: 'score_asc', label: 'Menor puntuacion' },
+];
+
+function PaginationNav({ pagination, onPageChange }) {
+  if (!pagination || pagination.total <= pagination.limit) {
+    return null;
+  }
+
+  const pages = buildVisiblePages(pagination.page, pagination.totalPages);
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--border)] pt-6">
+      <button
+        type="button"
+        className={paginationButtonClass}
+        onClick={() => onPageChange(pagination.page - 1)}
+        disabled={!pagination.hasPreviousPage}
+      >
+        Anterior
+      </button>
+
+      {pages.map((pageNumber) => (
+        <button
+          key={pageNumber}
+          type="button"
+          className={pageNumber === pagination.page ? activePaginationButtonClass : paginationButtonClass}
+          onClick={() => onPageChange(pageNumber)}
+          aria-current={pageNumber === pagination.page ? 'page' : undefined}
+        >
+          {pageNumber}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        className={paginationButtonClass}
+        onClick={() => onPageChange(pagination.page + 1)}
+        disabled={!pagination.hasNextPage}
+      >
+        Siguiente
+      </button>
+    </div>
+  );
+}
+
 export function BusinessDetailPageReal() {
   const { id } = useParams();
   const [selectedImage, setSelectedImage] = useState(null);
@@ -79,8 +169,17 @@ export function BusinessDetailPageReal() {
   const [errorMessage, setErrorMessage] = useState('');
   const [business, setBusiness] = useState(null);
   const [products, setProducts] = useState([]);
-  const [allRatings, setAllRatings] = useState([]);
-  const [recentReviews, setRecentReviews] = useState([]);
+  const [productsPagination, setProductsPagination] = useState(
+    createInitialPagination(PRODUCTS_PER_PAGE),
+  );
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productSort, setProductSort] = useState('newest');
+  const [ratings, setRatings] = useState([]);
+  const [ratingsPagination, setRatingsPagination] = useState(createInitialPagination(REVIEWS_PER_PAGE));
+  const [ratingsPage, setRatingsPage] = useState(1);
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+  const [ratingSort, setRatingSort] = useState('newest');
   const microtiendaViewRef = useRef({ viewId: null, startedAt: 0 });
   const productViewSessionsRef = useRef({});
 
@@ -92,11 +191,7 @@ export function BusinessDetailPageReal() {
       setErrorMessage('');
 
       try {
-        const [businessResponse, productsResponse, ratingsResponse] = await Promise.all([
-          getMicrotiendaByIdRequest(id),
-          getProductsRequest(Number(id)),
-          getRatingsRequest({ microtiendaId: Number(id) }),
-        ]);
+        const businessResponse = await getMicrotiendaByIdRequest(id);
 
         if (!isMounted) {
           return;
@@ -108,9 +203,6 @@ export function BusinessDetailPageReal() {
             businessResponse.descripcion?.trim() ||
             buildFallbackDescription(businessResponse.categoria || ''),
         });
-        setProducts(productsResponse || []);
-        setAllRatings(ratingsResponse || []);
-        setRecentReviews((ratingsResponse || []).slice(0, 3));
       } catch (error) {
         if (!isMounted) {
           return;
@@ -131,6 +223,110 @@ export function BusinessDetailPageReal() {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    setProductsPage(1);
+    setRatingsPage(1);
+    setProducts([]);
+    setRatings([]);
+    setProductsPagination(createInitialPagination(PRODUCTS_PER_PAGE));
+    setRatingsPagination(createInitialPagination(REVIEWS_PER_PAGE));
+    setProductSort('newest');
+    setRatingSort('newest');
+  }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProducts = async () => {
+      setProductsLoading(true);
+
+      try {
+        const response = await getProductsRequest(Number(id), {
+          page: productsPage,
+          limit: PRODUCTS_PER_PAGE,
+          sort: productSort,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (response?.pagination && productsPage > response.pagination.totalPages) {
+          setProductsPage(response.pagination.totalPages);
+          return;
+        }
+
+        setProducts(response?.items || []);
+        setProductsPagination(response?.pagination || createInitialPagination(PRODUCTS_PER_PAGE));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        console.error('No se pudieron cargar los productos de la microtienda', error);
+        setProducts([]);
+        setProductsPagination(createInitialPagination(PRODUCTS_PER_PAGE));
+      } finally {
+        if (isMounted) {
+          setProductsLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, productsPage, productSort]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRatings = async () => {
+      setRatingsLoading(true);
+
+      try {
+        const response = await getRatingsRequest({
+          microtiendaId: Number(id),
+          page: ratingsPage,
+          limit: REVIEWS_PER_PAGE,
+          sort: ratingSort,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (response?.pagination && ratingsPage > response.pagination.totalPages) {
+          setRatingsPage(response.pagination.totalPages);
+          return;
+        }
+
+        setRatings(response?.items || []);
+        setRatingsPagination(response?.pagination || createInitialPagination(REVIEWS_PER_PAGE));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        console.error('No se pudieron cargar las reseñas de la microtienda', error);
+        setRatings([]);
+        setRatingsPagination(createInitialPagination(REVIEWS_PER_PAGE));
+      } finally {
+        if (isMounted) {
+          setRatingsLoading(false);
+        }
+      }
+    };
+
+    loadRatings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, ratingsPage, ratingSort]);
 
   useEffect(() => {
     let isMounted = true;
@@ -201,36 +397,11 @@ export function BusinessDetailPageReal() {
     return normalized ? `https://wa.me/${normalized}` : null;
   }, [business]);
 
-  const productRatingsMap = useMemo(
-    () =>
-      allRatings.reduce((accumulator, review) => {
-        const productId = Number(review.idProducto ?? review.productoId ?? review.id_producto ?? 0);
-
-        if (!productId) {
-          return accumulator;
-        }
-
-        if (!accumulator[productId]) {
-          accumulator[productId] = { total: 0, count: 0 };
-        }
-
-        accumulator[productId].total += Number(review.puntuacion || 0);
-        accumulator[productId].count += 1;
-        return accumulator;
-      }, {}),
-    [allRatings],
-  );
-
   const getProductRatingSummary = (productId) => {
-    const summary = productRatingsMap[Number(productId)];
-
-    if (!summary?.count) {
-      return { average: 0, count: 0 };
-    }
-
+    const product = products.find((item) => Number(item.id) === Number(productId));
     return {
-      average: Number((summary.total / summary.count).toFixed(1)),
-      count: summary.count,
+      average: Number(product?.promedioCalificacion || 0),
+      count: Number(product?.totalCalificaciones || 0),
     };
   };
 
@@ -420,11 +591,35 @@ export function BusinessDetailPageReal() {
 
             <div id="productos-negocio" className={cardClass}>
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="m-0">Productos publicados</h2>
-                <span className={badgeClass}>{products.length}</span>
+                <div className="flex items-center gap-3">
+                  <h2 className="m-0">Productos publicados</h2>
+                  <span className={badgeClass}>{productsPagination.total}</span>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
+                  <ChevronsUpDown size={16} />
+                  <span>Ordenar por</span>
+                  <select
+                    className={selectClass}
+                    value={productSort}
+                    onChange={(event) => {
+                      setProductsPage(1);
+                      setProductSort(event.target.value);
+                    }}
+                  >
+                    {productSortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
-              {products.length === 0 ? (
+              {productsLoading ? (
+                <div className="flex items-center justify-center rounded-[var(--radius)] bg-[var(--secondary)] px-6 py-10">
+                  <Loader size={28} className="animate-spin" color="var(--accent)" />
+                </div>
+              ) : products.length === 0 ? (
                 <div className="rounded-[var(--radius)] bg-[var(--secondary)] px-6 py-10 text-center">
                   <h4 className="mb-3">Esta tienda todavía no tiene productos aprobados</h4>
                   <p className="m-0 text-[var(--muted-foreground)]">
@@ -432,7 +627,8 @@ export function BusinessDetailPageReal() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {products.map((product, index) => (
                     <motion.div
                       key={product.id}
@@ -487,21 +683,54 @@ export function BusinessDetailPageReal() {
                     </motion.div>
                   ))}
                 </div>
+
+                <PaginationNav
+                  pagination={productsPagination}
+                  onPageChange={(nextPage) => setProductsPage(nextPage)}
+                />
+                </>
               )}
             </div>
 
             <div id="resenas-negocio" className={`${cardClass} mt-6`}>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className={badgeClass}>{ratingsPagination.total}</span>
                 <h2 className="m-0">Reseñas de este negocio</h2>
               </div>
 
-              {allRatings.length === 0 ? (
+              <div className="mb-4 flex justify-end">
+                <label className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
+                  <ChevronsUpDown size={16} />
+                  <span>Ordenar por</span>
+                  <select
+                    className={selectClass}
+                    value={ratingSort}
+                    onChange={(event) => {
+                      setRatingsPage(1);
+                      setRatingSort(event.target.value);
+                    }}
+                  >
+                    {ratingSortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {ratingsLoading ? (
+                <div className="flex items-center justify-center rounded-[var(--radius)] bg-[var(--secondary)] px-6 py-10">
+                  <Loader size={28} className="animate-spin" color="var(--accent)" />
+                </div>
+              ) : ratings.length === 0 ? (
                 <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-4 text-[var(--muted-foreground)]">
                   Este negocio todavía no tiene reseñas aprobadas.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {allRatings.map((review) => (
+                <>
+                  <div className="flex flex-col gap-3">
+                  {ratings.map((review) => (
                     <div key={review.id} className="rounded-[var(--radius)] bg-[var(--secondary)] p-4">
                       <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -534,6 +763,12 @@ export function BusinessDetailPageReal() {
                     </div>
                   ))}
                 </div>
+
+                <PaginationNav
+                  pagination={ratingsPagination}
+                  onPageChange={(nextPage) => setRatingsPage(nextPage)}
+                />
+                </>
               )}
             </div>
           </div>

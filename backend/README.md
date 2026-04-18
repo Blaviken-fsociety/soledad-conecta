@@ -23,29 +23,13 @@ La API mantiene una separación por capas:
 
 ## Persistencia
 
-Persistencia activa en demo:
+Persistencia activa:
 
 - `src/data/database.json`
 
 Utilidades de lectura y escritura:
 
 - `src/utils/jsonDb.js`
-
-Esquema relacional documentado:
-
-- `sql/schema.sql`
-
-Tablas relevantes del esquema actual:
-
-- `usuario`
-- `categoria`
-- `microtienda`
-- `producto`
-- `producto_imagen`
-- `calificacion`
-- `pqrs`
-- `microtienda_views`
-- `product_views`
 
 ## Variables de entorno
 
@@ -214,4 +198,4 @@ La limpieza también contempla relaciones derivadas:
 ## Consideraciones
 
 - el backend no rompe las APIs existentes y añade nuevas capacidades de forma compatible
-- la persistencia JSON sigue siendo útil para demostración, pero no es la estrategia final recomendada para producción
+- el backend trabaja netamente con `src/data/database.json`

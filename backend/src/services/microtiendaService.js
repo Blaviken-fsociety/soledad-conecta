@@ -30,6 +30,13 @@ const sanitizeMicrotienda = (microtienda) => ({
   promedioCalificacion: Number(microtienda.promedio_calificacion || 0),
 });
 
+const normalizeFilterText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 const parseId = (id, label) => {
   const numericId = Number(id);
 
@@ -76,12 +83,10 @@ export const getMicrotiendasService = async ({
   categoria,
 } = {}) => {
   const rows = await findAllMicrotiendas({ includePending });
-  const normalizedSearch = String(search || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-  const normalizedCategoria = String(categoria || '').trim().toLowerCase();
+  const normalizedSearch = normalizeFilterText(search);
+  const normalizedCategoria = normalizeFilterText(categoria);
+  const effectiveCategoria =
+    !normalizedCategoria || normalizedCategoria === 'todos' ? '' : normalizedCategoria;
 
   const sanitizedRows = rows
     .map(sanitizeMicrotienda)
@@ -90,16 +95,10 @@ export const getMicrotiendasService = async ({
         !normalizedSearch ||
         [item.nombre, item.descripcion, item.propietario, item.categoria, item.sectorEconomico]
           .filter(Boolean)
-          .some((value) =>
-            String(value)
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .toLowerCase()
-              .includes(normalizedSearch),
-          );
+          .some((value) => normalizeFilterText(value).includes(normalizedSearch));
 
       const matchesCategory =
-        !normalizedCategoria || String(item.categoria || '').trim().toLowerCase() === normalizedCategoria;
+        !effectiveCategoria || normalizeFilterText(item.categoria) === effectiveCategoria;
 
       return matchesSearch && matchesCategory;
     });
@@ -201,6 +200,10 @@ export const reviewMicrotiendaService = async (id, { estadoRevision, observacion
     throw buildHttpError('El estado de revision no es valido', 400);
   }
 
+  if (estadoRevision === 'RECHAZADO' && !String(observacionRevision || '').trim()) {
+    throw buildHttpError('Debes indicar el motivo del rechazo para la microtienda', 400);
+  }
+
   const updatedMicrotienda = await updateMicrotienda(numericId, {
     nombre: microtienda.nombre,
     descripcion: microtienda.descripcion,
@@ -210,7 +213,7 @@ export const reviewMicrotiendaService = async (id, { estadoRevision, observacion
     logoImagen: microtienda.logo_imagen || '',
     estado: microtienda.estado,
     estadoRevision,
-    observacionRevision: observacionRevision || '',
+    observacionRevision: estadoRevision === 'RECHAZADO' ? String(observacionRevision || '').trim() : '',
     idCategoria: microtienda.id_categoria,
   });
 

@@ -41,19 +41,84 @@ const sanitizeSummary = (item) => ({
   comentarioDestacado: item.comentario_destacado || 'Sin comentarios todavia.',
 });
 
+const paginateCollection = (items, page, limit) => {
+  const safePage = Math.max(Number(page || 1), 1);
+  const safeLimit = Math.max(Number(limit || 10), 1);
+  const total = items.length;
+  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: items.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasPreviousPage: safePage > 1,
+      hasNextPage: safePage < totalPages,
+    },
+  };
+};
+
+const sortRatings = (items, sort) => {
+  const sortableItems = [...items];
+
+  switch (sort) {
+    case 'score_desc':
+      return sortableItems.sort(
+        (a, b) =>
+          Number(b.puntuacion || 0) - Number(a.puntuacion || 0) ||
+          new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime(),
+      );
+    case 'score_asc':
+      return sortableItems.sort(
+        (a, b) =>
+          Number(a.puntuacion || 0) - Number(b.puntuacion || 0) ||
+          new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime(),
+      );
+    case 'oldest':
+      return sortableItems.sort(
+        (a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime(),
+      );
+    case 'newest':
+    default:
+      return sortableItems.sort(
+        (a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime(),
+      );
+  }
+};
+
 export const getRatingSummaryService = async () => {
   const rows = await findRatingSummaryByMicrotienda();
   return rows.map(sanitizeSummary);
 };
 
-export const getRatingsService = async ({ microtiendaId, productId, includePending = false, includePrivate = false } = {}) => {
+export const getRatingsService = async ({
+  microtiendaId,
+  productId,
+  includePending = false,
+  includePrivate = false,
+  page,
+  limit,
+  sort = 'newest',
+} = {}) => {
   const rows = await findRatings({ microtiendaId, productId, includePending });
-  return rows.map((item) => sanitizeRating(item, { includePrivate }));
+  const sanitizedRows = sortRatings(
+    rows.map((item) => sanitizeRating(item, { includePrivate })),
+    sort,
+  );
+
+  if (page || limit) {
+    return paginateCollection(sanitizedRows, page, limit);
+  }
+
+  return sanitizedRows;
 };
 
 export const getEntrepreneurRatingsService = async (
   authUser,
-  { page = 1, limit = 10, includePrivate = true } = {},
+  { page = 1, limit = 10, includePrivate = true, sort = 'newest' } = {},
 ) => {
   const microtienda = await findMicrotiendaByUserId(authUser.id, { includeInactive: true });
 
@@ -72,24 +137,11 @@ export const getEntrepreneurRatingsService = async (
   }
 
   const rows = await findRatingsByOwnerUserId(authUser.id, { includePending: true });
-  const sanitizedRows = rows.map((item) => sanitizeRating(item, { includePrivate }));
-  const safePage = Math.max(Number(page || 1), 1);
-  const safeLimit = Math.max(Number(limit || 10), 1);
-  const total = sanitizedRows.length;
-  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
-  const start = (safePage - 1) * safeLimit;
-
-  return {
-    items: sanitizedRows.slice(start, start + safeLimit),
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      totalPages,
-      hasPreviousPage: safePage > 1,
-      hasNextPage: safePage < totalPages,
-    },
-  };
+  const sanitizedRows = sortRatings(
+    rows.map((item) => sanitizeRating(item, { includePrivate })),
+    sort,
+  );
+  return paginateCollection(sanitizedRows, page, limit);
 };
 
 export const createRatingService = async ({

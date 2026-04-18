@@ -29,7 +29,7 @@ const categoryDefinitions = [
   { name: 'Tecnología', targetCategory: 'Tecnología', icon: Monitor },
   { name: 'Artesanías', targetCategory: 'Artesanías', icon: Palette },
   { name: 'Servicios', targetCategory: 'Servicios', icon: Settings },
-  { name: 'Belleza', targetCategory: 'Salud y Belleza', icon: Sparkles },
+  { name: 'Belleza', targetCategory: 'Belleza', icon: Sparkles },
 ];
 
 const accentButtonClass =

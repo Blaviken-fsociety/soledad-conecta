@@ -38,7 +38,6 @@ El repositorio ya incluye:
 - Node.js
 - Express
 - persistencia actual en JSON para demo
-- esquema MySQL documentado para despliegues futuros
 
 ## Rutas principales del frontend
 
@@ -99,19 +98,9 @@ Módulos disponibles:
 
 ## Persistencia actual
 
-El proyecto funciona hoy con persistencia JSON para la demo:
+El proyecto funciona hoy y debe operar con persistencia JSON:
 
 - `backend/src/data/database.json`
-
-Además, el repositorio deja documentado el esquema relacional en:
-
-- `backend/sql/schema.sql`
-
-Ese esquema ya contempla:
-
-- `microtienda_views`
-- `product_views`
-- `producto_imagen`
 
 ## Variables de entorno
 
@@ -162,4 +151,4 @@ npm run dev
 
 - los datos demo visibles en producción se limpiaron para evitar microtiendas de prueba como `ccerdos`, `example` o `tienda demo`
 - el backend mantiene compatibilidad con la arquitectura por capas existente
-- la persistencia en JSON es útil para demo, pero MySQL sigue siendo la ruta recomendada para un entorno institucional
+- toda la información funcional del sistema se lee y escribe desde `backend/src/data/database.json`
