@@ -65,7 +65,7 @@ const normalizeText = (value) =>
 
 const categoryAliases = {
   belleza: 'Belleza',
-  tecnologia: 'Tecnologia',
+  tecnologia: 'Tecnología',
   artesanias: 'Artesanías',
 };
 
