@@ -6,7 +6,6 @@ import { MarketplacePage } from './pages/MarketplacePage';
 import { BusinessDetailPageReal } from './pages/BusinessDetailPageReal';
 import { LoginPage } from './pages/LoginPage';
 import { ContactPage } from './pages/ContactPage';
-import { CommentsPage } from './pages/CommentsPage';
 import { EntrepreneurDashboard } from './pages/EntrepreneurDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import ScrollToTop from './components/ScrollToTop';
@@ -34,7 +33,6 @@ export function AppRouter() {
         <Route path="/marketplace" element={<Layout><MarketplacePage /></Layout>} />
         <Route path="/negocio/:id" element={<Layout><BusinessDetailPageReal /></Layout>} />
         <Route path="/contacto" element={<Layout><ContactPage /></Layout>} />
-        <Route path="/comentarios" element={<Layout><CommentsPage /></Layout>} />
       </Routes>
     </BrowserRouter>
   );

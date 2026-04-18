@@ -72,11 +72,6 @@ export function Footer() {
                   Contacto
                 </Link>
               </li>
-              <li>
-                <Link to="/comentarios" className={footerLinkClass}>
-                  Comentarios
-                </Link>
-              </li>
             </ul>
           </div>
 

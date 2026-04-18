@@ -418,7 +418,7 @@ export function BusinessDetailPageReal() {
               </p>
             </div>
 
-            <div className={cardClass}>
+            <div id="productos-negocio" className={cardClass}>
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="m-0">Productos publicados</h2>
                 <span className={badgeClass}>{products.length}</span>
@@ -490,24 +490,18 @@ export function BusinessDetailPageReal() {
               )}
             </div>
 
-            <div className={`${cardClass} mt-6`}>
+            <div id="resenas-negocio" className={`${cardClass} mt-6`}>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="m-0">Reseñas de este negocio</h2>
-                <Link
-                  to={`/comentarios?microtiendaId=${business.id}`}
-                  className={smallOutlineButtonClass}
-                >
-                  Ver todas
-                </Link>
               </div>
 
-              {recentReviews.length === 0 ? (
+              {allRatings.length === 0 ? (
                 <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-4 text-[var(--muted-foreground)]">
                   Este negocio todavía no tiene reseñas aprobadas.
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {recentReviews.map((review) => (
+                  {allRatings.map((review) => (
                     <div key={review.id} className="rounded-[var(--radius)] bg-[var(--secondary)] p-4">
                       <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -605,10 +599,6 @@ export function BusinessDetailPageReal() {
                 </div>
               )}
 
-              <Link to={`/comentarios?microtiendaId=${business.id}`} className={`${outlineButtonClass} w-full`}>
-                <Star size={20} />
-                Ver y dejar calificaciones
-              </Link>
             </div>
           </div>
         </div>

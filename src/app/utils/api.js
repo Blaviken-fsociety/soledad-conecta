@@ -97,7 +97,8 @@ export const deleteRatingRequest = (id) => unwrap(api.delete(`/calificaciones/${
 export const getAdminMetricsRequest = () => unwrap(api.get('/metricas/admin'));
 export const getAdminAnalyticsRequest = (range = 'weekly') =>
   unwrap(api.get('/metricas/admin/analitica', { params: { range } }));
-export const getEntrepreneurMetricsRequest = () => unwrap(api.get('/metricas/emprendedor'));
+export const getEntrepreneurMetricsRequest = (range = 'weekly') =>
+  unwrap(api.get('/metricas/emprendedor', { params: { range } }));
 export const getPublicMetricsRequest = () => unwrap(api.get('/metricas/publicas'));
 export const createMicrotiendaViewRequest = (payload) =>
   unwrap(api.post('/metricas/visitas/microtienda', payload));
@@ -109,6 +110,11 @@ export const updateProductViewDurationRequest = (viewId, payload) =>
   unwrap(api.patch(`/metricas/visitas/producto/${viewId}/permanencia`, payload));
 export const downloadAdminAnalyticsReportRequest = ({ format = 'csv', range = 'weekly' } = {}) =>
   api.get('/metricas/admin/reportes', {
+    params: { format, range },
+    responseType: 'blob',
+  });
+export const downloadCurrentAnalyticsReportRequest = ({ format = 'csv', range = 'weekly' } = {}) =>
+  api.get('/metricas/reportes', {
     params: { format, range },
     responseType: 'blob',
   });

@@ -17,6 +17,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { Link } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { getCategoriesRequest, getMarketplaceMicrotiendasRequest } from '../utils/api';
 
@@ -57,7 +58,14 @@ const normalizeText = (value) =>
     .toLowerCase()
     .trim();
 
+const categoryAliases = {
+  belleza: 'Salud y Belleza',
+  tecnologia: 'Tecnología',
+  artesanias: 'Artesanías',
+};
+
 export function MarketplacePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +80,17 @@ export function MarketplacePage() {
     hasPreviousPage: false,
     hasNextPage: false,
   });
+
+  useEffect(() => {
+    const requestedCategory = searchParams.get('category');
+
+    if (!requestedCategory) {
+      setSelectedCategory('Todos');
+      return;
+    }
+
+    setSelectedCategory(categoryAliases[normalizeText(requestedCategory)] || requestedCategory);
+  }, [searchParams]);
 
   useEffect(() => {
     let isMounted = true;
@@ -204,6 +223,17 @@ export function MarketplacePage() {
                   onClick={() => {
                     setSelectedCategory(category);
                     setPage(1);
+                    setSearchParams((currentParams) => {
+                      const nextParams = new URLSearchParams(currentParams);
+
+                      if (category === 'Todos') {
+                        nextParams.delete('category');
+                      } else {
+                        nextParams.set('category', category);
+                      }
+
+                      return nextParams;
+                    });
                   }}
                   className={selectedCategory === category ? activeFilterClass : inactiveFilterClass}
                 >

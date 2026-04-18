@@ -24,12 +24,12 @@ import {
 } from '../utils/api';
 
 const categoryDefinitions = [
-  { name: 'Alimentos', icon: Pizza },
-  { name: 'Moda', icon: Shirt },
-  { name: 'Tecnologia', icon: Monitor },
-  { name: 'Artesanias', icon: Palette },
-  { name: 'Servicios', icon: Settings },
-  { name: 'Belleza', icon: Sparkles },
+  { name: 'Alimentos', targetCategory: 'Alimentos', icon: Pizza },
+  { name: 'Moda', targetCategory: 'Moda', icon: Shirt },
+  { name: 'Tecnología', targetCategory: 'Tecnología', icon: Monitor },
+  { name: 'Artesanías', targetCategory: 'Artesanías', icon: Palette },
+  { name: 'Servicios', targetCategory: 'Servicios', icon: Settings },
+  { name: 'Belleza', targetCategory: 'Salud y Belleza', icon: Sparkles },
 ];
 
 const accentButtonClass =
@@ -277,7 +277,10 @@ export function HomePage() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  <Link to={`/marketplace?category=${category.name}`} className="no-underline">
+                  <Link
+                    to={`/marketplace?category=${encodeURIComponent(category.targetCategory || category.name)}`}
+                    className="no-underline"
+                  >
                     <div className={`${cardClass} cursor-pointer p-6 text-center`}>
                       <div className="mb-3 flex justify-center text-[var(--primary)]">
                         <Icon size={44} strokeWidth={1.7} />

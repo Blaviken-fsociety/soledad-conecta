@@ -25,7 +25,9 @@ export const getAdminMetrics = async (_request, response, next) => {
 
 export const getEntrepreneurMetrics = async (request, response, next) => {
   try {
-    const metrics = await getEntrepreneurDashboardMetricsService(request.auth.id);
+    const metrics = await getEntrepreneurDashboardMetricsService(request.auth.id, {
+      range: request.query?.range,
+    });
 
     response.status(200).json({
       success: true,
@@ -138,6 +140,24 @@ export const downloadAdminAnalyticsReport = async (request, response, next) => {
     const report = await generateAnalyticsReportService({
       range: request.query?.range,
       format: request.query?.format,
+      role: 'admin',
+    });
+
+    response.setHeader('Content-Type', report.contentType);
+    response.setHeader('Content-Disposition', `attachment; filename="${report.filename}"`);
+    response.status(200).send(report.content);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const downloadCurrentAnalyticsReport = async (request, response, next) => {
+  try {
+    const report = await generateAnalyticsReportService({
+      range: request.query?.range,
+      format: request.query?.format,
+      role: request.auth?.rol,
+      userId: request.auth?.id,
     });
 
     response.setHeader('Content-Type', report.contentType);
