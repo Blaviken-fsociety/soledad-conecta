@@ -628,7 +628,7 @@ export function BusinessDetailPageReal() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {products.map((product, index) => (
                     <motion.div
                       key={product.id}
@@ -636,33 +636,34 @@ export function BusinessDetailPageReal() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.08 }}
                     >
-                      <div className="h-full min-h-[340px] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                      <div className="h-full overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
                         <button
                           type="button"
-                          className="block h-full w-full cursor-pointer border-none bg-transparent p-0 text-left"
+                          className="block w-full cursor-pointer border-none bg-transparent p-0 text-left"
                           onClick={() => openProductPreview(product)}
                         >
-                          <div className="flex h-full flex-col">
-                            <div className="h-[200px] overflow-hidden bg-[var(--secondary)]">
+                          <div className="grid h-full grid-cols-[120px_minmax(0,1fr)]">
+                            <div>
                               <ImageWithFallback
                                 src={getProductImages(product)[0]}
                                 alt={product.nombre}
                                 style={{
                                   width: '100%',
-                                  height: '200px',
+                                  height: '100%',
                                   objectFit: 'cover',
+                                  minHeight: '120px',
                                 }}
                               />
                             </div>
-                            <div className="flex min-h-0 flex-1 flex-col p-4">
+                            <div className="p-4">
                               <div className="mb-2 flex items-start justify-between gap-3">
-                                <h4 className="mb-0 min-h-[48px] text-base leading-6 line-clamp-2">{product.nombre}</h4>
+                                <h4 className="mb-0 text-base">{product.nombre}</h4>
                                 <span className={badgeClass}>{product.stock}</span>
                               </div>
-                              <p className="mb-4 min-h-[60px] overflow-hidden text-sm leading-5 text-[var(--muted-foreground)] line-clamp-3">
+                              <p className="mb-2 text-sm text-[var(--muted-foreground)]">
                                 {product.descripcion || 'Producto registrado en la tienda.'}
                               </p>
-                              <div className="mt-auto flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                              <div className="flex items-center justify-between gap-3">
                                 <div className="text-lg font-bold text-[var(--accent-foreground)]">
                                   {formatPrice(product.precio)}
                                 </div>
@@ -863,9 +864,9 @@ export function BusinessDetailPageReal() {
       ) : null}
 
       {previewProduct ? (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-6">
-          <div className="flex max-h-[70vh] w-full max-w-[500px] flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
-            <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-[rgba(15,23,42,0.56)] px-4 py-8">
+          <div className="w-full max-w-[760px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_16px_60px_rgba(15,23,42,0.2)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h3 className="mb-2">Vista previa del producto</h3>
                 <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
@@ -873,20 +874,19 @@ export function BusinessDetailPageReal() {
                   <strong>{business.nombre}</strong> antes de dejar tu reseña.
                 </p>
               </div>
-                <button
-                  type="button"
-                  onClick={closeProductPreview}
+              <button
+                type="button"
+                onClick={closeProductPreview}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--white)]"
               >
                 <X size={20} color="var(--primary)" />
-                </button>
-              </div>
+              </button>
+            </div>
 
-            <div className="min-h-0 overflow-x-auto overflow-y-auto pr-1">
-            <div className="grid gap-4">
+            <div className="grid gap-5 lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
               <button
                 type="button"
-                className="relative h-[190px] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--secondary)] p-0"
+                className="relative overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--secondary)] p-0"
                 onClick={() => setSelectedImage(getProductImages(previewProduct)[previewProductImageIndex])}
               >
                 <ImageWithFallback
@@ -894,7 +894,8 @@ export function BusinessDetailPageReal() {
                   alt={`${previewProduct.nombre} ${previewProductImageIndex + 1}`}
                   style={{
                     width: '100%',
-                    height: '190px',
+                    height: '100%',
+                    minHeight: '280px',
                     objectFit: 'cover',
                   }}
                 />
@@ -935,8 +936,8 @@ export function BusinessDetailPageReal() {
                 </div>
               </button>
 
-              <div className="flex min-h-0 flex-col">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="flex flex-col">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
                   <span className={badgeClass}>{business.categoria || 'General'}</span>
                   <div className="flex items-center gap-2 rounded-[var(--radius)] bg-[var(--secondary)] px-3 py-2 text-sm font-semibold text-[var(--primary)]">
                     <Star size={16} fill="var(--accent)" color="var(--accent)" />
@@ -952,15 +953,13 @@ export function BusinessDetailPageReal() {
                 </div>
 
                 <h3 className="mb-2">{previewProduct.nombre}</h3>
-                <div className="mb-4 max-h-[130px] overflow-y-auto rounded-[var(--radius)] bg-[var(--secondary)] px-3 py-2.5">
-                  <p className="m-0 text-sm leading-6 text-[var(--muted-foreground)]">
-                    {previewProduct.descripcion ||
-                      'Producto publicado por este negocio en la vitrina institucional.'}
-                  </p>
-                </div>
+                <p className="mb-5 text-[var(--muted-foreground)]">
+                  {previewProduct.descripcion ||
+                    'Producto publicado por este negocio en la vitrina institucional.'}
+                </p>
 
-                <div className="mb-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-3.5">
+                <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-4">
                     <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
                       Precio
                     </span>
@@ -968,7 +967,7 @@ export function BusinessDetailPageReal() {
                       {formatPrice(previewProduct.precio)}
                     </span>
                   </div>
-                  <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-3.5">
+                  <div className="rounded-[var(--radius)] bg-[var(--secondary)] p-4">
                     <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
                       Stock disponible
                     </span>
@@ -978,14 +977,14 @@ export function BusinessDetailPageReal() {
                   </div>
                 </div>
 
-                <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[rgba(27,58,95,0.04)] p-3.5">
+                <div className="mb-5 rounded-[var(--radius)] border border-[var(--border)] bg-[rgba(27,58,95,0.04)] p-4">
                   <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
                     Microtienda
                   </span>
                   <span className="text-sm font-semibold text-[var(--foreground)]">{business.nombre}</span>
                 </div>
 
-                <div className="mt-auto flex flex-wrap justify-end gap-2.5">
+                <div className="mt-auto flex flex-wrap justify-end gap-3">
                   <button
                     type="button"
                     className={outlineButtonClass}
@@ -1005,7 +1004,6 @@ export function BusinessDetailPageReal() {
                   </button>
                 </div>
               </div>
-            </div>
             </div>
           </div>
         </div>
