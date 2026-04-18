@@ -852,11 +852,12 @@ export const generateAnalyticsReportService = async ({
   userId = null,
 } = {}) => {
   const safeFormat = String(format || 'csv').toLowerCase();
+  const selectedRange = normalizeRange(range);
   const dateLabel = new Date().toISOString().slice(0, 10);
   const isEntrepreneur = role === 'entrepreneur';
   const analytics = isEntrepreneur
-    ? await getEntrepreneurDashboardMetricsService(userId)
-    : await getAdminAnalyticsService({ range });
+    ? await getEntrepreneurDashboardMetricsService(userId, { range: selectedRange })
+    : await getAdminAnalyticsService({ range: selectedRange });
 
   if (safeFormat === 'xlsx' || safeFormat === 'excel' || safeFormat === 'xls') {
     return {

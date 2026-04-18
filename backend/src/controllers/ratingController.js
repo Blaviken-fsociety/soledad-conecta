@@ -25,6 +25,9 @@ export const getRatings = async (request, response, next) => {
     const ratings = await getRatingsService({
       microtiendaId: request.query.microtiendaId ? Number(request.query.microtiendaId) : undefined,
       productId: request.query.productId ? Number(request.query.productId) : undefined,
+      page: request.query.page ? Number(request.query.page) : undefined,
+      limit: request.query.limit ? Number(request.query.limit) : undefined,
+      sort: request.query.sort || undefined,
     });
 
     response.status(200).json({
@@ -43,6 +46,9 @@ export const getRatingsForReview = async (request, response, next) => {
       productId: request.query.productId ? Number(request.query.productId) : undefined,
       includePending: true,
       includePrivate: true,
+      page: request.query.page ? Number(request.query.page) : undefined,
+      limit: request.query.limit ? Number(request.query.limit) : undefined,
+      sort: request.query.sort || undefined,
     });
 
     response.status(200).json({
@@ -60,6 +66,7 @@ export const getEntrepreneurRatings = async (request, response, next) => {
       page: Number(request.query.page || 1),
       limit: Number(request.query.limit || 10),
       includePrivate: true,
+      sort: request.query.sort || 'newest',
     });
 
     response.status(200).json({

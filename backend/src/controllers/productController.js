@@ -11,6 +11,9 @@ export const getProducts = async (request, response, next) => {
   try {
     const products = await getProductsService({
       microtiendaId: request.query.microtiendaId ? Number(request.query.microtiendaId) : undefined,
+      page: request.query.page ? Number(request.query.page) : undefined,
+      limit: request.query.limit ? Number(request.query.limit) : undefined,
+      sort: request.query.sort || undefined,
     });
 
     response.status(200).json({
@@ -27,6 +30,9 @@ export const getProductsForReview = async (request, response, next) => {
     const products = await getProductsService({
       microtiendaId: request.query.microtiendaId ? Number(request.query.microtiendaId) : undefined,
       includePending: true,
+      page: request.query.page ? Number(request.query.page) : undefined,
+      limit: request.query.limit ? Number(request.query.limit) : undefined,
+      sort: request.query.sort || undefined,
     });
 
     response.status(200).json({

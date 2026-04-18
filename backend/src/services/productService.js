@@ -73,9 +73,75 @@ const ensureOwnerMicrotienda = async (userId) => {
   return microtienda;
 };
 
-export const getProductsService = async ({ microtiendaId, includePending = false } = {}) => {
+const paginateCollection = (items, page, limit) => {
+  const safePage = Math.max(Number(page || 1), 1);
+  const safeLimit = Math.max(Number(limit || 10), 1);
+  const total = items.length;
+  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: items.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasPreviousPage: safePage > 1,
+      hasNextPage: safePage < totalPages,
+    },
+  };
+};
+
+const sortProducts = (items, sort) => {
+  const sortableItems = [...items];
+
+  switch (sort) {
+    case 'rating_desc':
+      return sortableItems.sort(
+        (a, b) =>
+          Number(b.promedioCalificacion || 0) - Number(a.promedioCalificacion || 0) ||
+          Number(b.totalCalificaciones || 0) - Number(a.totalCalificaciones || 0) ||
+          new Date(b.fechaCreacion || 0).getTime() - new Date(a.fechaCreacion || 0).getTime(),
+      );
+    case 'rating_asc':
+      return sortableItems.sort(
+        (a, b) =>
+          Number(a.promedioCalificacion || 0) - Number(b.promedioCalificacion || 0) ||
+          Number(a.totalCalificaciones || 0) - Number(b.totalCalificaciones || 0) ||
+          new Date(b.fechaCreacion || 0).getTime() - new Date(a.fechaCreacion || 0).getTime(),
+      );
+    case 'price_desc':
+      return sortableItems.sort((a, b) => Number(b.precio || 0) - Number(a.precio || 0));
+    case 'price_asc':
+      return sortableItems.sort((a, b) => Number(a.precio || 0) - Number(b.precio || 0));
+    case 'name_asc':
+      return sortableItems.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+    case 'name_desc':
+      return sortableItems.sort((a, b) => String(b.nombre || '').localeCompare(String(a.nombre || ''), 'es'));
+    case 'newest':
+    default:
+      return sortableItems.sort(
+        (a, b) => new Date(b.fechaCreacion || 0).getTime() - new Date(a.fechaCreacion || 0).getTime(),
+      );
+  }
+};
+
+export const getProductsService = async ({
+  microtiendaId,
+  includePending = false,
+  page,
+  limit,
+  sort = 'newest',
+} = {}) => {
   const products = await findProducts({ microtiendaId, includePending });
-  return products.map(sanitizeProduct);
+  const sanitizedProducts = sortProducts(products.map(sanitizeProduct), sort);
+
+  if (page || limit) {
+    return paginateCollection(sanitizedProducts, page, limit);
+  }
+
+  return sanitizedProducts;
 };
 
 export const getMyProductsService = async (authUser) => {
@@ -171,6 +237,10 @@ export const reviewProductService = async (id, { estadoRevision, observacionRevi
     throw buildHttpError('El estado de revision no es valido', 400);
   }
 
+  if (estadoRevision === 'RECHAZADO' && !String(observacionRevision || '').trim()) {
+    throw buildHttpError('Debes indicar el motivo del rechazo para el producto', 400);
+  }
+
   const updatedProduct = await updateProduct(numericProductId, {
     nombre: product.nombre,
     descripcion: product.descripcion,
@@ -180,7 +250,7 @@ export const reviewProductService = async (id, { estadoRevision, observacionRevi
     imagenes: Array.isArray(product.imagenes) && product.imagenes.length ? product.imagenes : product.imagen_url ? [product.imagen_url] : [],
     estado: product.estado,
     estadoRevision,
-    observacionRevision: observacionRevision || '',
+    observacionRevision: estadoRevision === 'RECHAZADO' ? String(observacionRevision || '').trim() : '',
     idCategoria: product.id_categoria,
   });
 

@@ -8,6 +8,7 @@ const defaultFilePath = path.resolve(__dirname, '../data/database.json');
 const filePath = process.env.DATA_FILE
   ? path.resolve(process.cwd(), process.env.DATA_FILE)
   : defaultFilePath;
+let operationQueue = Promise.resolve();
 
 const createEmptyDb = () => ({
   roles: [],
@@ -58,7 +59,7 @@ const ensureFile = async () => {
   }
 };
 
-export const readData = async () => {
+const readDataUnsafe = async () => {
   await ensureFile();
   const raw = await fs.readFile(filePath, 'utf8');
   const parsed = JSON.parse(raw);
@@ -72,17 +73,36 @@ export const readData = async () => {
   return parsed;
 };
 
-export const writeData = async (data) => {
+const writeDataUnsafe = async (data) => {
   await ensureFile();
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
   return data;
 };
 
+const runExclusive = (operation) => {
+  const execution = operationQueue.then(operation, operation);
+  operationQueue = execution.then(
+    () => undefined,
+    () => undefined,
+  );
+  return execution;
+};
+
+export const readData = async () => {
+  return runExclusive(() => readDataUnsafe());
+};
+
+export const writeData = async (data) => {
+  return runExclusive(() => writeDataUnsafe(data));
+};
+
 export const updateData = async (updater) => {
-  const current = await readData();
-  const next = await updater(current);
-  await writeData(next);
-  return next;
+  return runExclusive(async () => {
+    const current = await readDataUnsafe();
+    const next = await updater(current);
+    await writeDataUnsafe(next);
+    return next;
+  });
 };
 
 export const getNextId = (items, fieldName) => {

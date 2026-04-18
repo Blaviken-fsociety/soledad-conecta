@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   ExternalLink,
   Filter,
   Loader,
@@ -45,6 +46,10 @@ const activeFilterClass = `${filterButtonBase} bg-[var(--accent)] text-[var(--ac
 const inactiveFilterClass = `${filterButtonBase} border-2 border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] hover:shadow-[0_4px_12px_rgba(27,58,95,0.2)]`;
 const primaryButtonClass =
   'inline-flex items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] px-6 py-3 text-base font-semibold text-[var(--primary-foreground)] transition-all duration-200 hover:-translate-y-px hover:bg-[#152E4D] hover:shadow-[0_4px_12px_rgba(27,58,95,0.25)]';
+const categoryMenuTriggerClass =
+  'inline-flex min-h-11 items-center gap-3 rounded-[var(--radius)] border-2 border-[var(--primary)] bg-[var(--white)] px-4 py-2 text-sm font-semibold text-[var(--primary)] transition-all duration-200 hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(27,58,95,0.16)]';
+const categoryMenuItemClass =
+  'flex w-full items-center justify-between gap-3 rounded-[calc(var(--radius)-4px)] px-3 py-2.5 text-left text-sm font-medium text-[var(--primary)] transition-all duration-200 hover:bg-[var(--secondary)] hover:text-[var(--primary)]';
 
 const buildFallbackDescription = (category) =>
   category
@@ -82,15 +87,38 @@ export function MarketplacePage() {
   });
 
   useEffect(() => {
+    if (!searchParams.get('page')) {
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        nextParams.set('page', '1');
+        return nextParams;
+      });
+      return;
+    }
+
+    const requestedSearch = searchParams.get('search') || '';
+    const requestedPage = Number(searchParams.get('page') || 1);
     const requestedCategory = searchParams.get('category');
+
+    setSearchTerm(requestedSearch);
+    setPage(Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
 
     if (!requestedCategory) {
       setSelectedCategory('Todos');
       return;
     }
 
-    setSelectedCategory(categoryAliases[normalizeText(requestedCategory)] || requestedCategory);
-  }, [searchParams]);
+    const normalizedRequestedCategory = normalizeText(requestedCategory);
+    const matchedCategory = categories.find(
+      (category) => normalizeText(category.name) === normalizedRequestedCategory,
+    );
+
+    setSelectedCategory(
+      matchedCategory?.name ||
+        categoryAliases[normalizedRequestedCategory] ||
+        requestedCategory,
+    );
+  }, [categories, searchParams, setSearchParams]);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,15 +127,31 @@ export function MarketplacePage() {
       setIsLoading(true);
 
       try {
-        const [backendCategories, backendBusinesses] = await Promise.all([
-          getCategoriesRequest(true),
-          getMarketplaceMicrotiendasRequest({
-            page,
-            limit: 9,
-            search: searchTerm.trim(),
-            categoria: selectedCategory,
-          }),
-        ]);
+        const categoryRequest = getCategoriesRequest(true).catch((error) => {
+          console.error('No se pudieron cargar las categorias del marketplace', error);
+          return [];
+        });
+        const marketplaceParams = {
+          page,
+          limit: 9,
+          search: searchTerm.trim(),
+          categoria: selectedCategory === 'Todos' ? '' : selectedCategory,
+        };
+        let backendBusinesses = await getMarketplaceMicrotiendasRequest(marketplaceParams);
+        const backendCategories = await categoryRequest;
+
+        const rawPrimaryBusinesses = Array.isArray(backendBusinesses)
+          ? backendBusinesses
+          : backendBusinesses?.items || [];
+
+        if (
+          selectedCategory === 'Todos' &&
+          !searchTerm.trim() &&
+          rawPrimaryBusinesses.length === 0 &&
+          Number(backendBusinesses?.pagination?.total || 0) === 0
+        ) {
+          backendBusinesses = await getMarketplaceMicrotiendasRequest({ page: 1, limit: 9 });
+        }
 
         if (!isMounted) {
           return;
@@ -137,20 +181,29 @@ export function MarketplacePage() {
           sector: business.sectorEconomico || '',
         }));
 
+        const nextPagination = backendBusinesses?.pagination || {
+          page: 1,
+          limit: 9,
+          total: formattedBusinesses.length,
+          totalPages: 1,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        };
+
+        if ((nextPagination.totalPages || 1) < page && page > 1) {
+          setSearchParams((currentParams) => {
+            const nextParams = new URLSearchParams(currentParams);
+            nextParams.set('page', '1');
+            return nextParams;
+          });
+          return;
+        }
+
         setCategories(formattedCategories);
         setBusinesses(formattedBusinesses);
-        setPagination(
-          backendBusinesses?.pagination || {
-            page: 1,
-            limit: 9,
-            total: formattedBusinesses.length,
-            totalPages: 1,
-            hasPreviousPage: false,
-            hasNextPage: false,
-          },
-        );
+        setPagination(nextPagination);
       } catch (error) {
-        console.error('No se pudieron cargar las categorias y microtiendas del marketplace', error);
+        console.error('No se pudieron cargar las microtiendas del marketplace', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -207,8 +260,20 @@ export function MarketplacePage() {
                 placeholder="Buscar emprendimientos registrados..."
                 value={searchTerm}
                 onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setPage(1);
+                  const nextSearch = event.target.value;
+
+                  setSearchParams((currentParams) => {
+                    const nextParams = new URLSearchParams(currentParams);
+
+                    if (nextSearch.trim()) {
+                      nextParams.set('search', nextSearch);
+                    } else {
+                      nextParams.delete('search');
+                    }
+
+                    nextParams.set('page', '1');
+                    return nextParams;
+                  });
                 }}
               />
             </div>
@@ -217,29 +282,51 @@ export function MarketplacePage() {
             <div className="flex flex-wrap items-center gap-2">
               <Filter size={20} color="var(--primary)" />
               <span className="mr-2 font-semibold">Categoria:</span>
-              {categoryOptions.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => {
-                    setSelectedCategory(category);
-                    setPage(1);
-                    setSearchParams((currentParams) => {
-                      const nextParams = new URLSearchParams(currentParams);
-
-                      if (category === 'Todos') {
-                        nextParams.delete('category');
-                      } else {
-                        nextParams.set('category', category);
-                      }
-
-                      return nextParams;
-                    });
-                  }}
-                  className={selectedCategory === category ? activeFilterClass : inactiveFilterClass}
-                >
-                  {category}
+              <div className="group relative">
+                <button type="button" className={categoryMenuTriggerClass}>
+                  <span className="max-w-[180px] truncate">{selectedCategory}</span>
+                  <ChevronsUpDown size={16} />
                 </button>
-              ))}
+
+                <div className="pointer-events-none invisible absolute top-full right-0 z-20 mt-2 w-[280px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-2 opacity-0 shadow-[0_16px_40px_rgba(27,58,95,0.16)] transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
+                  <div className="mb-2 px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    Filtrar por categoria
+                  </div>
+
+                  <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
+                    {categoryOptions.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => {
+                          setSearchParams((currentParams) => {
+                            const nextParams = new URLSearchParams(currentParams);
+
+                            if (category === 'Todos') {
+                              nextParams.delete('category');
+                            } else {
+                              nextParams.set('category', category);
+                            }
+
+                            nextParams.set('page', '1');
+                            return nextParams;
+                          });
+                        }}
+                        className={
+                          selectedCategory === category
+                            ? `${categoryMenuItemClass} bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[#E5A600] hover:text-[var(--accent-foreground)]`
+                            : categoryMenuItemClass
+                        }
+                      >
+                        <span>{category}</span>
+                        {selectedCategory === category ? (
+                          <span className="text-xs font-bold uppercase tracking-[0.08em]">Activa</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -275,9 +362,7 @@ export function MarketplacePage() {
             </p>
             <button
               onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('Todos');
-                setPage(1);
+                setSearchParams(new URLSearchParams([['page', '1']]));
               }}
               className={primaryButtonClass}
             >
@@ -352,7 +437,15 @@ export function MarketplacePage() {
             <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                onClick={() =>
+                  setSearchParams((currentParams) => {
+                    const nextParams = new URLSearchParams(currentParams);
+                    const nextPage = Math.max(page - 1, 1);
+
+                    nextParams.set('page', String(nextPage));
+                    return nextParams;
+                  })
+                }
                 disabled={!pagination.hasPreviousPage}
                 className={inactiveFilterClass}
               >
@@ -363,7 +456,14 @@ export function MarketplacePage() {
                 <button
                   key={pageNumber}
                   type="button"
-                  onClick={() => setPage(pageNumber)}
+                  onClick={() =>
+                    setSearchParams((currentParams) => {
+                      const nextParams = new URLSearchParams(currentParams);
+
+                      nextParams.set('page', String(pageNumber));
+                      return nextParams;
+                    })
+                  }
                   className={page === pageNumber ? activeFilterClass : inactiveFilterClass}
                 >
                   {pageNumber}
@@ -371,7 +471,15 @@ export function MarketplacePage() {
               ))}
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.min(current + 1, pagination.totalPages || 1))}
+                onClick={() =>
+                  setSearchParams((currentParams) => {
+                    const nextParams = new URLSearchParams(currentParams);
+                    const nextPage = Math.min(page + 1, pagination.totalPages || 1);
+
+                    nextParams.set('page', String(nextPage));
+                    return nextParams;
+                  })
+                }
                 disabled={!pagination.hasNextPage}
                 className={inactiveFilterClass}
               >

@@ -44,6 +44,12 @@ const thClass = 'border-b-2 border-[var(--border)] bg-[var(--secondary)] px-4 py
 const tdClass = 'border-b border-[var(--border)] px-4 py-3 align-top text-sm';
 const tabClass = 'rounded-[var(--radius)] px-5 py-2.5 text-sm font-semibold transition-all duration-200';
 const labelClass = 'mb-2 block text-sm font-semibold text-[var(--foreground)]';
+const paginationButtonClass =
+  'inline-flex min-w-10 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-semibold text-[var(--primary)] transition-all duration-200 hover:border-[var(--primary)] hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-50';
+const activePaginationButtonClass =
+  'inline-flex min-w-10 items-center justify-center rounded-[var(--radius)] border border-[var(--primary)] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-[0_6px_16px_rgba(27,58,95,0.18)]';
+const PENDING_ITEMS_PER_PAGE = 4;
+const DEFAULT_ADMIN_ITEMS_PER_PAGE = 8;
 
 const initialEditForm = {
   nombre: '',
@@ -130,6 +136,79 @@ const getRelativeTime = (value) => {
   return `Hace ${Math.floor(diffInHours / 24)}d`;
 };
 
+const buildVisiblePages = (currentPage, totalPages) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const start = Math.max(currentPage - 2, 1);
+  const end = Math.min(start + 4, totalPages);
+  const normalizedStart = Math.max(end - 4, 1);
+
+  return Array.from({ length: end - normalizedStart + 1 }, (_, index) => normalizedStart + index);
+};
+
+const paginateCollection = (items, page, limit) => {
+  const safeLimit = Math.max(Number(limit || DEFAULT_ADMIN_ITEMS_PER_PAGE), 1);
+  const total = items.length;
+  const totalPages = Math.max(Math.ceil(total / safeLimit), 1);
+  const safePage = Math.min(Math.max(Number(page || 1), 1), totalPages);
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    items: items.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
+      hasPreviousPage: safePage > 1,
+      hasNextPage: safePage < totalPages,
+    },
+  };
+};
+
+function TablePagination({ pagination, onPageChange }) {
+  if (!pagination || pagination.total <= pagination.limit) {
+    return null;
+  }
+
+  const pages = buildVisiblePages(pagination.page, pagination.totalPages);
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--border)] pt-6">
+      <button
+        type="button"
+        className={paginationButtonClass}
+        onClick={() => onPageChange(pagination.page - 1)}
+        disabled={!pagination.hasPreviousPage}
+      >
+        <ChevronLeft size={16} />
+        Anterior
+      </button>
+      {pages.map((pageNumber) => (
+        <button
+          key={pageNumber}
+          type="button"
+          className={pageNumber === pagination.page ? activePaginationButtonClass : paginationButtonClass}
+          onClick={() => onPageChange(pageNumber)}
+        >
+          {pageNumber}
+        </button>
+      ))}
+      <button
+        type="button"
+        className={paginationButtonClass}
+        onClick={() => onPageChange(pagination.page + 1)}
+        disabled={!pagination.hasNextPage}
+      >
+        Siguiente
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+}
+
 function Badge({ children, bg = 'var(--accent)', color = 'var(--accent-foreground)' }) {
   return (
     <span
@@ -166,6 +245,7 @@ export function AdminDashboard() {
   const [expandedPqrsId, setExpandedPqrsId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmReview, setConfirmReview] = useState(null);
+  const [reviewObservation, setReviewObservation] = useState('');
   const [approvingUser, setApprovingUser] = useState(null);
   const [approvalPassword, setApprovalPassword] = useState('');
   const [passwordResetApproval, setPasswordResetApproval] = useState(null);
@@ -178,6 +258,12 @@ export function AdminDashboard() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [pendingUsersPage, setPendingUsersPage] = useState(1);
+  const [pendingMicrostoresPage, setPendingMicrostoresPage] = useState(1);
+  const [pendingProductsPage, setPendingProductsPage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
+  const [pqrsPage, setPqrsPage] = useState(1);
+  const [commentsPage, setCommentsPage] = useState(1);
 
   const loadDashboardData = async ({ withUsersLoading = false } = {}) => {
     if (withUsersLoading) {
@@ -250,6 +336,10 @@ export function AdminDashboard() {
     );
   }, [managedUsers, userSearch]);
 
+  useEffect(() => {
+    setUsersPage(1);
+  }, [userSearch]);
+
   const pendingUsers = useMemo(
     () => usersWithBusiness.filter((user) => user.rol === 'entrepreneur' && user.estadoRevision === 'PENDIENTE'),
     [usersWithBusiness],
@@ -303,6 +393,41 @@ export function AdminDashboard() {
   const pendingPqrs = useMemo(
     () => standardPqrsItems.filter((item) => item.estado === 'PENDIENTE' || item.estado === 'EN_PROCESO'),
     [standardPqrsItems],
+  );
+
+  const pendingApprovalUsers = useMemo(
+    () => [...pendingUsers, ...pendingPasswordResetRequests],
+    [pendingPasswordResetRequests, pendingUsers],
+  );
+
+  const pendingUsersTable = useMemo(
+    () => paginateCollection(pendingApprovalUsers, pendingUsersPage, PENDING_ITEMS_PER_PAGE),
+    [pendingApprovalUsers, pendingUsersPage],
+  );
+
+  const pendingMicrostoresTable = useMemo(
+    () => paginateCollection(pendingMicrostores, pendingMicrostoresPage, PENDING_ITEMS_PER_PAGE),
+    [pendingMicrostores, pendingMicrostoresPage],
+  );
+
+  const pendingProductsTable = useMemo(
+    () => paginateCollection(pendingProducts, pendingProductsPage, PENDING_ITEMS_PER_PAGE),
+    [pendingProducts, pendingProductsPage],
+  );
+
+  const usersTable = useMemo(
+    () => paginateCollection(filteredUsers, usersPage, DEFAULT_ADMIN_ITEMS_PER_PAGE),
+    [filteredUsers, usersPage],
+  );
+
+  const pqrsTable = useMemo(
+    () => paginateCollection(standardPqrsItems, pqrsPage, DEFAULT_ADMIN_ITEMS_PER_PAGE),
+    [pqrsPage, standardPqrsItems],
+  );
+
+  const commentsTable = useMemo(
+    () => paginateCollection(ratings, commentsPage, DEFAULT_ADMIN_ITEMS_PER_PAGE),
+    [commentsPage, ratings],
   );
 
   const totalPendingCount = useMemo(
@@ -432,12 +557,12 @@ export function AdminDashboard() {
     [pendingMicrostores.length, pendingProducts.length, pendingPqrs.length, pendingRatings.length, pendingUsers.length, pendingPasswordResetRequests.length],
   );
 
-  const handleReviewMicrostore = async (id, estadoRevision) => {
+  const handleReviewMicrostore = async (id, estadoRevision, observacionRevision = '') => {
     setReviewActionLoading(`microstore-${id}-${estadoRevision}`);
     setUsersError('');
 
     try {
-      await reviewMicrotiendaRequest(id, { estadoRevision });
+      await reviewMicrotiendaRequest(id, { estadoRevision, observacionRevision });
       await loadDashboardData();
     } catch (error) {
       setUsersError(error.message || 'No fue posible actualizar la microtienda.');
@@ -446,12 +571,12 @@ export function AdminDashboard() {
     }
   };
 
-  const handleReviewProduct = async (id, estadoRevision) => {
+  const handleReviewProduct = async (id, estadoRevision, observacionRevision = '') => {
     setReviewActionLoading(`product-${id}-${estadoRevision}`);
     setUsersError('');
 
     try {
-      await reviewProductRequest(id, { estadoRevision });
+      await reviewProductRequest(id, { estadoRevision, observacionRevision });
       await loadDashboardData();
     } catch (error) {
       setUsersError(error.message || 'No fue posible actualizar el producto.');
@@ -581,6 +706,7 @@ export function AdminDashboard() {
   };
 
   const openReviewConfirmation = ({ type, id, name, estadoRevision }) => {
+    setReviewObservation('');
     setConfirmReview({
       type,
       id,
@@ -596,12 +722,22 @@ export function AdminDashboard() {
       return;
     }
 
+    const trimmedObservation = reviewObservation.trim();
+    const requiresObservation =
+      confirmReview.estadoRevision === 'RECHAZADO' &&
+      (confirmReview.type === 'microstore' || confirmReview.type === 'product');
+
+    if (requiresObservation && !trimmedObservation) {
+      setUsersError('Debes escribir el motivo del rechazo para que el emprendedor pueda corregirlo.');
+      return;
+    }
+
     if (confirmReview.type === 'microstore') {
-      await handleReviewMicrostore(confirmReview.id, confirmReview.estadoRevision);
+      await handleReviewMicrostore(confirmReview.id, confirmReview.estadoRevision, trimmedObservation);
     }
 
     if (confirmReview.type === 'product') {
-      await handleReviewProduct(confirmReview.id, confirmReview.estadoRevision);
+      await handleReviewProduct(confirmReview.id, confirmReview.estadoRevision, trimmedObservation);
     }
 
     if (confirmReview.type === 'rating') {
@@ -609,6 +745,7 @@ export function AdminDashboard() {
     }
 
     setConfirmReview(null);
+    setReviewObservation('');
   };
 
   const handleConfirmLogout = () => {
@@ -1090,7 +1227,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...pendingUsers, ...pendingPasswordResetRequests].length ? [...pendingUsers, ...pendingPasswordResetRequests].map((user) => (
+                    {pendingUsersTable.items.length ? pendingUsersTable.items.map((user) => (
                       <tr key={user.solicitudTipo === 'RESET_PASSWORD' ? `password-reset-${user.id}` : `user-${user.id}`}>
                         <td className={`${tdClass} font-semibold`}>{user.nombre}</td>
                         <td className={tdClass}>{user.correo || 'Sin correo'}</td>
@@ -1165,6 +1302,10 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                pagination={pendingUsersTable.pagination}
+                onPageChange={setPendingUsersPage}
+              />
             </div>
 
             <div className={`${cardClass} mb-6`}>
@@ -1182,7 +1323,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingMicrostores.length ? pendingMicrostores.map((business) => (
+                    {pendingMicrostoresTable.items.length ? pendingMicrostoresTable.items.map((business) => (
                       <tr key={business.id}>
                         <td className={`${tdClass} font-semibold`}>{business.nombre}</td>
                         <td className={tdClass}>{business.propietario || 'Sin propietario'}</td>
@@ -1243,6 +1384,10 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                pagination={pendingMicrostoresTable.pagination}
+                onPageChange={setPendingMicrostoresPage}
+              />
             </div>
 
             <div className={cardClass}>
@@ -1260,7 +1405,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingProducts.length ? pendingProducts.map((product) => (
+                    {pendingProductsTable.items.length ? pendingProductsTable.items.map((product) => (
                       <tr key={`pending-product-${product.id}`}>
                         <td className={tdClass}>
                           <div className="flex items-start gap-3">
@@ -1344,6 +1489,10 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                pagination={pendingProductsTable.pagination}
+                onPageChange={setPendingProductsPage}
+              />
             </div>
           </motion.div>
         ) : null}
@@ -1387,8 +1536,8 @@ export function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.length ? (
-                        filteredUsers.map((user) => (
+                      {usersTable.items.length ? (
+                        usersTable.items.map((user) => (
                           <tr key={user.id}>
                             <td className={`${tdClass} font-semibold`}>{user.nombre}</td>
                             <td className={tdClass}>{user.correo}</td>
@@ -1453,6 +1602,7 @@ export function AdminDashboard() {
                   </table>
                 </div>
               )}
+              <TablePagination pagination={usersTable.pagination} onPageChange={setUsersPage} />
             </div>
           </motion.div>
         ) : null}
@@ -1474,7 +1624,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {standardPqrsItems.length ? standardPqrsItems.map((pqr) => (
+                    {pqrsTable.items.length ? pqrsTable.items.map((pqr) => (
                       <Fragment key={`pqrs-${pqr.id}`}>
                         <tr key={`pqrs-row-${pqr.id}`}>
                           <td className={tdClass}>
@@ -1561,6 +1711,7 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              <TablePagination pagination={pqrsTable.pagination} onPageChange={setPqrsPage} />
             </div>
           </motion.div>
         ) : null}
@@ -1583,7 +1734,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ratings.length ? ratings.map((rating) => (
+                    {commentsTable.items.length ? commentsTable.items.map((rating) => (
                       <tr key={rating.id}>
                         <td className={`${tdClass} font-semibold`}>{rating.nombreVisitante}</td>
                         <td className={tdClass}>{rating.microtienda || 'Sin microtienda'}</td>
@@ -1632,6 +1783,7 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              <TablePagination pagination={commentsTable.pagination} onPageChange={setCommentsPage} />
             </div>
           </motion.div>
         ) : null}
@@ -1876,11 +2028,27 @@ export function AdminDashboard() {
                 {confirmReview.message}
               </p>
             </div>
+            {confirmReview.estadoRevision === 'RECHAZADO' &&
+            (confirmReview.type === 'microstore' || confirmReview.type === 'product') ? (
+              <div className="mb-4">
+                <label className={labelClass}>Motivo del rechazo</label>
+                <textarea
+                  className={`${inputClass} min-h-[120px]`}
+                  value={reviewObservation}
+                  onChange={(event) => setReviewObservation(event.target.value)}
+                  placeholder="Explica al emprendedor qué debe corregir para volver a solicitar la aprobación."
+                  required
+                />
+              </div>
+            ) : null}
             <div className="flex flex-wrap justify-end gap-3 pt-2">
               <button
                 type="button"
                 className={outlineButtonClass}
-                onClick={() => setConfirmReview(null)}
+                onClick={() => {
+                  setConfirmReview(null);
+                  setReviewObservation('');
+                }}
                 disabled={Boolean(reviewActionLoading)}
               >
                 Cancelar

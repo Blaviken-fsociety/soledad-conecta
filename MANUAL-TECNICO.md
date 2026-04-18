@@ -2,7 +2,7 @@
 
 ## Soledad Conecta
 
-Soledad Conecta es una plataforma full stack para la promoción de microemprendimientos locales. El sistema combina un frontend en React + Vite con un backend en Node.js + Express y hoy funciona con persistencia JSON para demo, dejando listo un esquema MySQL para evolución posterior.
+Soledad Conecta es una plataforma full stack para la promoción de microemprendimientos locales. El sistema combina un frontend en React + Vite con un backend en Node.js + Express y funciona con persistencia JSON centralizada.
 
 ## 1. Objetivo del sistema
 
@@ -43,7 +43,6 @@ Responsabilidades:
 - Express
 - arquitectura por capas
 - persistencia JSON actual
-- esquema MySQL documentado para escenarios productivos
 
 Responsabilidades:
 
@@ -247,7 +246,6 @@ Cobertura funcional:
 - formulario de creación
 - formulario de edición
 - almacenamiento JSON como arreglo de imágenes
-- esquema MySQL mediante tabla `producto_imagen`
 - galería visual y selector de miniaturas en la vista previa
 
 ## 7. Analítica y métricas
@@ -272,16 +270,6 @@ La analítica se alimenta con eventos registrados por el sistema:
 - `calificaciones`
 - `pqrs`
 - `metricas`
-- `microtienda_views`
-- `product_views`
-
-### Tablas previstas en MySQL
-
-- `microtienda`
-- `producto`
-- `producto_imagen`
-- `calificacion`
-- `pqrs`
 - `microtienda_views`
 - `product_views`
 
@@ -318,19 +306,12 @@ Endpoints destacados:
 - `POST /metricas/visitas/microtienda`
 - `POST /metricas/visitas/producto`
 
-## 9. Persistencia actual y evolución prevista
+## 9. Persistencia actual
 
 ### Estado actual
 
 - persistencia JSON en `backend/src/data/database.json`
 - lectura y escritura controladas desde `backend/src/utils/jsonDb.js`
-
-### Evolución prevista
-
-- migración de persistencia a MySQL
-- externalización de imágenes
-- reportes PDF si el proyecto lo requiere
-- métricas avanzadas por rango, cohortes o conversión
 
 ## 10. Validaciones relevantes
 
@@ -393,5 +374,4 @@ DATA_FILE=src/data/database.json
 
 - JSON funciona bien para demo, pero no para alta concurrencia
 - guardar imágenes en base64 incrementa el tamaño del archivo de datos
-- antes de una salida productiva conviene migrar a almacenamiento externo y base de datos real
 - la arquitectura actual ya está preparada para seguir ampliando el módulo de métricas sin romper la base existente

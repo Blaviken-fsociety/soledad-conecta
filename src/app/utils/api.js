@@ -66,10 +66,24 @@ export const reviewMicrotiendaRequest = (id, payload) =>
   unwrap(api.patch(`/microtiendas/${id}/revision`, payload));
 export const deleteMicrotiendaRequest = (id) => unwrap(api.delete(`/microtiendas/${id}`));
 
-export const getProductsRequest = (microtiendaId, includePending = false) =>
-  includePending
-    ? unwrap(api.get('/productos/revision/lista', { params: microtiendaId ? { microtiendaId } : undefined }))
-    : unwrap(api.get('/productos', { params: microtiendaId ? { microtiendaId } : undefined }));
+export const getProductsRequest = (microtiendaId, includePendingOrOptions = false, maybeOptions = {}) => {
+  const includePending =
+    typeof includePendingOrOptions === 'object'
+      ? Boolean(includePendingOrOptions.includePending)
+      : Boolean(includePendingOrOptions);
+  const options =
+    typeof includePendingOrOptions === 'object' ? includePendingOrOptions : maybeOptions;
+  const params = {
+    ...(microtiendaId ? { microtiendaId } : {}),
+    ...(options.page ? { page: options.page } : {}),
+    ...(options.limit ? { limit: options.limit } : {}),
+    ...(options.sort ? { sort: options.sort } : {}),
+  };
+
+  return includePending
+    ? unwrap(api.get('/productos/revision/lista', { params: Object.keys(params).length ? params : undefined }))
+    : unwrap(api.get('/productos', { params: Object.keys(params).length ? params : undefined }));
+};
 export const getMyProductsRequest = () => unwrap(api.get('/productos/mine'));
 export const createProductRequest = (payload) => unwrap(api.post('/productos', payload));
 export const updateProductRequest = (id, payload) => unwrap(api.put(`/productos/${id}`, payload));

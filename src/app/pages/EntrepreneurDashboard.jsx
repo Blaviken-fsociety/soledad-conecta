@@ -912,6 +912,11 @@ export function EntrepreneurDashboard() {
                               >
                                 {formatReviewStatus(product.estadoRevision)}
                               </Badge>
+                              {product.estadoRevision === 'RECHAZADO' && product.observacionRevision ? (
+                                <p className="mt-2 mb-0 max-w-[240px] text-xs leading-5 text-[#B91C1C]">
+                                  Motivo: {product.observacionRevision}
+                                </p>
+                              ) : null}
                             </td>
                             <td className={tdClass}>
                               <div className="flex items-center gap-2">
@@ -956,6 +961,14 @@ export function EntrepreneurDashboard() {
                       ? microtienda.descripcion || 'Tu negocio ya está¡ conectado al backend y listo para ser gestionado.'
                       : 'Completa el perfil para registrar tu negocio en la plataforma institucional.'}
                   </p>
+                  {microtienda?.estadoRevision === 'RECHAZADO' && microtienda?.observacionRevision ? (
+                    <div className="mb-4 rounded-[var(--radius)] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[#B91C1C]">
+                        Motivo del rechazo
+                      </p>
+                      <p className="m-0 text-sm leading-6 text-[#991B1B]">{microtienda.observacionRevision}</p>
+                    </div>
+                  ) : null}
                   <button className={`${smallOutlineButtonClass} w-full`} onClick={() => setActiveTab('profile')}>
                     {microtienda ? 'Actualizar perfil' : 'Registrar negocio'}
                   </button>
@@ -1142,6 +1155,11 @@ export function EntrepreneurDashboard() {
                             >
                               {formatReviewStatus(product.estadoRevision)}
                             </Badge>
+                            {product.estadoRevision === 'RECHAZADO' && product.observacionRevision ? (
+                              <p className="mt-2 mb-0 max-w-[280px] text-xs leading-5 text-[#B91C1C]">
+                                Motivo: {product.observacionRevision}
+                              </p>
+                            ) : null}
                           </td>
                           <td className={tdClass}>
                             <div className="flex flex-wrap gap-2">
