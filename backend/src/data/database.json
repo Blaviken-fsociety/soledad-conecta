@@ -2032,6 +2032,62 @@
       "id_usuario": null,
       "timestamp": "2026-04-18T05:21:29.592Z",
       "duracion_segundos": 26
+    },
+    {
+      "id": 139,
+      "microtienda_id": 11,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:30:52.611Z",
+      "duracion_segundos": 0
+    },
+    {
+      "id": 140,
+      "microtienda_id": 11,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:30:52.624Z",
+      "duracion_segundos": 20
+    },
+    {
+      "id": 141,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:31:17.154Z",
+      "duracion_segundos": 0
+    },
+    {
+      "id": 142,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:31:17.167Z",
+      "duracion_segundos": 0
+    },
+    {
+      "id": 143,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:32:57.751Z",
+      "duracion_segundos": 0
+    },
+    {
+      "id": 144,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:32:57.761Z",
+      "duracion_segundos": 134
+    },
+    {
+      "id": 145,
+      "microtienda_id": 6,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:35:16.339Z",
+      "duracion_segundos": 0
+    },
+    {
+      "id": 146,
+      "microtienda_id": 6,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:35:16.355Z",
+      "duracion_segundos": 0
     }
   ],
   "product_views": [
@@ -2106,6 +2162,62 @@
       "id_usuario": null,
       "timestamp": "2026-04-18T03:52:39.806Z",
       "duracion_segundos": 5
+    },
+    {
+      "id": 10,
+      "producto_id": 19,
+      "microtienda_id": 11,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:30:53.629Z",
+      "duracion_segundos": 12
+    },
+    {
+      "id": 11,
+      "producto_id": 9,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:31:18.272Z",
+      "duracion_segundos": 7
+    },
+    {
+      "id": 12,
+      "producto_id": 8,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:31:27.513Z",
+      "duracion_segundos": 15
+    },
+    {
+      "id": 13,
+      "producto_id": 9,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:32:55.694Z",
+      "duracion_segundos": 1
+    },
+    {
+      "id": 14,
+      "producto_id": 9,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:33:00.589Z",
+      "duracion_segundos": 1
+    },
+    {
+      "id": 15,
+      "producto_id": 9,
+      "microtienda_id": 7,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:33:35.152Z",
+      "duracion_segundos": 95
+    },
+    {
+      "id": 16,
+      "producto_id": 6,
+      "microtienda_id": 6,
+      "id_usuario": null,
+      "timestamp": "2026-04-18T15:35:55.916Z",
+      "duracion_segundos": 1
     }
   ]
 }
