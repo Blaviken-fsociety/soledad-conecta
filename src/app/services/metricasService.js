@@ -1,6 +1,7 @@
 import {
   createMicrotiendaViewRequest,
   createProductViewRequest,
+  downloadCurrentAnalyticsReportRequest,
   downloadAdminAnalyticsReportRequest,
   getAdminAnalyticsRequest,
   updateMicrotiendaViewDurationRequest,
@@ -54,10 +55,17 @@ export const registerProductStay = async (viewId, durationSeconds) => {
   return updateProductViewDurationRequest(viewId, { durationSeconds });
 };
 
-export const downloadAnalyticsReport = async ({ format = 'csv', range = 'weekly' } = {}) => {
-  const response = await downloadAdminAnalyticsReportRequest({ format, range });
+export const downloadAnalyticsReport = async ({
+  format = 'csv',
+  range = 'weekly',
+  scope = 'admin',
+} = {}) => {
+  const response =
+    scope === 'entrepreneur'
+      ? await downloadCurrentAnalyticsReportRequest({ format, range })
+      : await downloadAdminAnalyticsReportRequest({ format, range });
   const extension = getDownloadExtension(format);
-  const filename = `reporte-metricas-${new Date().toISOString().slice(0, 10)}.${extension}`;
+  const filename = `${scope === 'entrepreneur' ? 'reporte-mi-negocio' : 'reporte-metricas'}-${new Date().toISOString().slice(0, 10)}.${extension}`;
 
   triggerBrowserDownload(response.data, filename);
 };

@@ -127,14 +127,65 @@ export const getAdminDashboardMetricsService = async () => {
   };
 };
 
-export const getEntrepreneurDashboardMetricsService = async (userId) => {
+export const getEntrepreneurDashboardMetricsService = async (
+  userId,
+  { range = DEFAULT_RANGE } = {},
+) => {
   const metrics = await getEntrepreneurMetrics(userId);
+  const selectedRange = normalizeRange(range);
+  if (!metrics?.id_microtienda) {
+    return {
+      range: selectedRange,
+      microtiendaId: null,
+      microtienda: '',
+      totalProductos: 0,
+      inventarioTotal: 0,
+      promedioCalificacion: 0,
+      totalCalificaciones: 0,
+      totalVisitasMicrotienda: 0,
+      visitasDirectasMicrotienda: 0,
+      visualizacionesProductos: 0,
+      totalResenasRecibidas: 0,
+      totalResenasAprobadas: 0,
+      tasaInteraccion: 0,
+      productosMasVistos: [],
+      actividadSemanal: [],
+      distribucionCategorias: [],
+      distribucionCalificaciones: [
+        { estrella: 1, total: 0 },
+        { estrella: 2, total: 0 },
+        { estrella: 3, total: 0 },
+        { estrella: 4, total: 0 },
+        { estrella: 5, total: 0 },
+      ],
+      tablaProductos: [],
+      growth: {
+        general: buildGrowth(0, 0),
+        microtienda: buildGrowth(0, 0),
+        productos: buildGrowth(0, 0),
+        visitas: buildGrowth(0, 0),
+        visualizaciones: buildGrowth(0, 0),
+        resenas: buildGrowth(0, 0),
+      },
+    };
+  }
+
   const snapshot = await getAnalyticsSnapshot();
   const microtiendaId = Number(metrics?.id_microtienda || 0);
-  const approvedProducts = getCollection(snapshot.productos).filter(
-    (item) => Number(item.id_microtienda) === microtiendaId && item.estado && item.estado_revision === 'APROBADO',
+  const days = getRangeDays(selectedRange);
+  const now = Date.now();
+  const currentStart = startOfDayTimestamp(now - (days - 1) * DAY_IN_MS);
+  const previousStart = currentStart - days * DAY_IN_MS;
+  const currentEnd = now;
+  const allProducts = getCollection(snapshot.productos).filter(
+    (item) => Number(item.id_microtienda) === microtiendaId,
   );
-  const productMap = new Map(approvedProducts.map((item) => [Number(item.id_producto), item]));
+  const approvedProducts = allProducts.filter(
+    (item) => item.estado && item.estado_revision === 'APROBADO',
+  );
+  const categories = getCollection(snapshot.categorias);
+  const categoryMap = new Map(categories.map((item) => [Number(item.id_categoria), item]));
+  const productMap = new Map(allProducts.map((item) => [Number(item.id_producto), item]));
   const productViews = getCollection(snapshot.product_views).filter(
     (item) => Number(item.microtienda_id) === microtiendaId,
   );
@@ -145,6 +196,32 @@ export const getEntrepreneurDashboardMetricsService = async (userId) => {
     (item) => Number(item.id_microtienda) === microtiendaId,
   );
   const approvedRatings = allRatings.filter((item) => item.estado_revision === 'APROBADO');
+  const totalViews = directViews.length + productViews.length;
+  const interactionRate = totalViews > 0 ? Number(((approvedRatings.length / totalViews) * 100).toFixed(1)) : 0;
+  const currentMicrotiendaViews = directViews.filter((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    return timestamp >= currentStart && timestamp <= currentEnd;
+  });
+  const previousMicrotiendaViews = directViews.filter((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    return timestamp >= previousStart && timestamp < currentStart;
+  });
+  const currentProductViews = productViews.filter((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    return timestamp >= currentStart && timestamp <= currentEnd;
+  });
+  const previousProductViews = productViews.filter((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    return timestamp >= previousStart && timestamp < currentStart;
+  });
+  const currentApprovedRatings = approvedRatings.filter((item) => {
+    const timestamp = new Date(item.fecha).getTime();
+    return timestamp >= currentStart && timestamp <= currentEnd;
+  });
+  const previousApprovedRatings = approvedRatings.filter((item) => {
+    const timestamp = new Date(item.fecha).getTime();
+    return timestamp >= previousStart && timestamp < currentStart;
+  });
   const productRanking = approvedProducts
     .map((product) => {
       const productViewsCount = productViews.filter(
@@ -161,7 +238,7 @@ export const getEntrepreneurDashboardMetricsService = async (userId) => {
     .sort((a, b) => b.vistas - a.vistas || a.nombre.localeCompare(b.nombre))
     .slice(0, 5);
 
-  const chartBuckets = buildPeriodBuckets('weekly');
+  const chartBuckets = buildPeriodBuckets(selectedRange);
   const bucketByKey = new Map(chartBuckets.map((item) => [item.key.slice(0, 10), item]));
 
   [...directViews, ...productViews].forEach((view) => {
@@ -180,25 +257,97 @@ export const getEntrepreneurDashboardMetricsService = async (userId) => {
     bucket.totalViews += 1;
   });
 
+  approvedRatings.forEach((rating) => {
+    const bucket = bucketByKey.get(new Date(rating.fecha).toISOString().slice(0, 10));
+
+    if (!bucket) {
+      return;
+    }
+
+    bucket.reviews = (bucket.reviews || 0) + 1;
+  });
+
+  const categoryDistribution = allProducts
+    .reduce((accumulator, product) => {
+      const categoryId = Number(product.id_categoria);
+      const existing = accumulator.get(categoryId) || {
+        id: categoryId,
+        name: categoryMap.get(categoryId)?.nombre || 'Sin categoría',
+        value: 0,
+      };
+
+      existing.value += 1;
+      accumulator.set(categoryId, existing);
+      return accumulator;
+    }, new Map())
+    .values();
+
+  const ratingDistribution = [1, 2, 3, 4, 5].map((star) => ({
+    estrella: star,
+    total: approvedRatings.filter((item) => Number(item.puntuacion) === star).length,
+  }));
+
+  const productTable = allProducts
+    .map((product) => {
+      const productId = Number(product.id_producto);
+      const views = productViews.filter((view) => Number(view.producto_id) === productId).length;
+      const relatedRatings = approvedRatings.filter((rating) => Number(rating.id_producto) === productId);
+      const averageRating = relatedRatings.length
+        ? Number(
+            (
+              relatedRatings.reduce((total, rating) => total + Number(rating.puntuacion || 0), 0) /
+              relatedRatings.length
+            ).toFixed(1),
+          )
+        : 0;
+
+      return {
+        id: productId,
+        nombre: product.nombre,
+        visualizaciones: views,
+        resenas: relatedRatings.length,
+        promedioCalificacion: averageRating,
+        stock: Number(product.stock || 0),
+      };
+    })
+    .sort((a, b) => b.visualizaciones - a.visualizaciones || a.nombre.localeCompare(b.nombre));
+
   return {
+    range: selectedRange,
     microtiendaId: metrics?.id_microtienda || null,
     microtienda: metrics?.microtienda || '',
     totalProductos: Number(metrics?.total_productos || 0),
     inventarioTotal: Number(metrics?.inventario_total || 0),
     promedioCalificacion: Number(metrics?.promedio_calificacion || 0),
     totalCalificaciones: Number(metrics?.total_calificaciones || 0),
-    totalVisitasMicrotienda: directViews.length + productViews.length,
+    totalVisitasMicrotienda: directViews.length,
     visitasDirectasMicrotienda: directViews.length,
     visualizacionesProductos: productViews.length,
     totalResenasRecibidas: allRatings.length,
     totalResenasAprobadas: approvedRatings.length,
+    tasaInteraccion: interactionRate,
     productosMasVistos: productRanking,
     actividadSemanal: chartBuckets.map((bucket) => ({
       label: bucket.label,
       microtiendaViews: bucket.microtiendaViews,
       productViews: bucket.productViews,
       totalViews: bucket.totalViews,
+      reviews: bucket.reviews || 0,
     })),
+    distribucionCategorias: Array.from(categoryDistribution).sort((a, b) => b.value - a.value),
+    distribucionCalificaciones: ratingDistribution,
+    tablaProductos: productTable,
+    growth: {
+      general: buildGrowth(
+        currentMicrotiendaViews.length + currentProductViews.length + currentApprovedRatings.length,
+        previousMicrotiendaViews.length + previousProductViews.length + previousApprovedRatings.length,
+      ),
+      microtienda: buildGrowth(currentMicrotiendaViews.length, previousMicrotiendaViews.length),
+      productos: buildGrowth(currentProductViews.length, previousProductViews.length),
+      visitas: buildGrowth(currentMicrotiendaViews.length, previousMicrotiendaViews.length),
+      visualizaciones: buildGrowth(currentProductViews.length, previousProductViews.length),
+      resenas: buildGrowth(currentApprovedRatings.length, previousApprovedRatings.length),
+    },
   };
 };
 
@@ -558,6 +707,53 @@ const buildReportRows = (analytics) => {
   };
 };
 
+const buildEntrepreneurReportRows = (analytics) => {
+  const summaryRows = [
+    ['Métrica', 'Valor'],
+    ['Microtienda', analytics.microtienda || 'Sin microtienda'],
+    ['Total de productos', analytics.totalProductos],
+    ['Visitas a la microtienda', analytics.totalVisitasMicrotienda],
+    ['Visualizaciones de productos', analytics.visualizacionesProductos],
+    ['Reseñas aprobadas', analytics.totalResenasAprobadas],
+    ['Promedio de calificación', analytics.promedioCalificacion],
+    ['Tasa de interacción (%)', analytics.tasaInteraccion],
+  ];
+
+  const productRows = [
+    ['Producto', 'Visualizaciones', 'Reseñas', 'Calificación promedio', 'Stock'],
+    ...(analytics.tablaProductos || []).map((item) => [
+      item.nombre,
+      item.visualizaciones,
+      item.resenas,
+      item.promedioCalificacion,
+      item.stock,
+    ]),
+  ];
+
+  const activityRows = [
+    ['Fecha', 'Visitas microtienda', 'Visualizaciones productos', 'Vistas totales', 'Reseñas'],
+    ...(analytics.actividadSemanal || []).map((item) => [
+      item.label,
+      item.microtiendaViews,
+      item.productViews,
+      item.totalViews,
+      item.reviews,
+    ]),
+  ];
+
+  const reviewRows = [
+    ['Estrellas', 'Cantidad'],
+    ...(analytics.distribucionCalificaciones || []).map((item) => [item.estrella, item.total]),
+  ];
+
+  return {
+    summaryRows,
+    productRows,
+    activityRows,
+    reviewRows,
+  };
+};
+
 const buildCsvReport = (analytics) => {
   const { summaryRows, microtiendaRows, productRows, activityRows } = buildReportRows(analytics);
 
@@ -610,22 +806,69 @@ ${buildExcelSheetXml('Actividad', activityRows)}
 </Workbook>`;
 };
 
-export const generateAnalyticsReportService = async ({ range = DEFAULT_RANGE, format = 'csv' } = {}) => {
-  const analytics = await getAdminAnalyticsService({ range });
+const buildEntrepreneurCsvReport = (analytics) => {
+  const { summaryRows, productRows, activityRows, reviewRows } = buildEntrepreneurReportRows(analytics);
+
+  const sections = [
+    ['Reporte de métricas del emprendimiento'],
+    [`Microtienda: ${analytics.microtienda || 'Sin microtienda'}`],
+    [`Generado: ${new Date().toLocaleString('es-CO')}`],
+    [],
+    ...summaryRows,
+    [],
+    ['Actividad por fecha'],
+    ...activityRows,
+    [],
+    ['Productos del negocio'],
+    ...productRows,
+    [],
+    ['Distribución de calificaciones'],
+    ...reviewRows,
+  ];
+
+  return sections.map((row) => row.map(escapeCsvValue).join(',')).join('\n');
+};
+
+const buildEntrepreneurExcelReport = (analytics) => {
+  const { summaryRows, productRows, activityRows, reviewRows } = buildEntrepreneurReportRows(analytics);
+
+  return `<?xml version="1.0"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+${buildExcelSheetXml('Resumen', summaryRows)}
+${buildExcelSheetXml('Actividad', activityRows)}
+${buildExcelSheetXml('Productos', productRows)}
+${buildExcelSheetXml('Calificaciones', reviewRows)}
+</Workbook>`;
+};
+
+export const generateAnalyticsReportService = async ({
+  range = DEFAULT_RANGE,
+  format = 'csv',
+  role = 'admin',
+  userId = null,
+} = {}) => {
   const safeFormat = String(format || 'csv').toLowerCase();
   const dateLabel = new Date().toISOString().slice(0, 10);
+  const isEntrepreneur = role === 'entrepreneur';
+  const analytics = isEntrepreneur
+    ? await getEntrepreneurDashboardMetricsService(userId)
+    : await getAdminAnalyticsService({ range });
 
   if (safeFormat === 'xlsx' || safeFormat === 'excel' || safeFormat === 'xls') {
     return {
-      filename: `reporte-metricas-${dateLabel}.xls`,
+      filename: `${isEntrepreneur ? 'reporte-mi-negocio' : 'reporte-metricas'}-${dateLabel}.xls`,
       contentType: 'application/vnd.ms-excel; charset=utf-8',
-      content: buildExcelReport(analytics),
+      content: isEntrepreneur ? buildEntrepreneurExcelReport(analytics) : buildExcelReport(analytics),
     };
   }
 
   return {
-    filename: `reporte-metricas-${dateLabel}.csv`,
+    filename: `${isEntrepreneur ? 'reporte-mi-negocio' : 'reporte-metricas'}-${dateLabel}.csv`,
     contentType: 'text/csv; charset=utf-8',
-    content: buildCsvReport(analytics),
+    content: isEntrepreneur ? buildEntrepreneurCsvReport(analytics) : buildCsvReport(analytics),
   };
 };

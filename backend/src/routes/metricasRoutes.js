@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   createMicrotiendaView,
   createProductView,
+  downloadCurrentAnalyticsReport,
   downloadAdminAnalyticsReport,
   getAdminAnalytics,
   getAdminMetrics,
@@ -20,6 +21,7 @@ router.get('/admin', requireAuth, requireRole('admin'), getAdminMetrics);
 router.get('/admin/analitica', requireAuth, requireRole('admin'), getAdminAnalytics);
 router.get('/admin/reportes', requireAuth, requireRole('admin'), downloadAdminAnalyticsReport);
 router.get('/emprendedor', requireAuth, requireRole('entrepreneur'), getEntrepreneurMetrics);
+router.get('/reportes', requireAuth, downloadCurrentAnalyticsReport);
 
 router.post('/visitas/microtienda', optionalAuth, createMicrotiendaView);
 router.post('/visitas/producto', optionalAuth, createProductView);
